@@ -110,18 +110,21 @@ Do not edit generated PDFs directly. Regenerate PDFs from markdown.
 
 ## Tracking Commands
 
-Always use the DB helper. `data/applications.db` is the source of truth.
+Always use the DB helpers. `data/applications.db` is the source of truth, but agents must never open it directly with ad hoc SQLite code.
+
+`scripts/db.py` and `scripts/db_batch_insert.py` use a safe temp-copy + lock strategy to avoid frequent mounted-filesystem SQLite I/O failures. Use these helpers for every read and write.
 
 ```bash
 python3 scripts/db.py list
 python3 scripts/db.py summary
-python3 scripts/db.py add --company "X" --role "Y" --platform instahyre --score 4 --status Applied --location "L" --notes "..."
-python3 scripts/db.py update-status --company "X" --role "Y" --status Responded --source gmail --notes "..."
+python3 scripts/db.py add --company "X" --role "Y" --platform instahyre --score 4 --status Applied --location "L" --notes "..."  # one-off/manual only
+python3 scripts/db.py update-status --company "X" --role "Y" --platform instahyre --status Responded --source gmail --notes "..."
 python3 scripts/db.py log-gmail --message-id "ID" --sender "S" --subject "SUBJ" --action status_updated
-python3 scripts/db.py log-run --instahyre 10 --linkedin 5 --status-updates 2 --summary "..."
+python3 scripts/db_batch_insert.py --apps '[{"company":"X","role":"Y","platform":"instahyre","score":4,"status":"Applied","location":"L","notes":"..."}]'
+python3 scripts/db_batch_insert.py --log-run --instahyre 10 --linkedin 5 --status-updates 2 --summary "..."
 ```
 
-If a DB command fails, report the error and continue the browser work. Do not let a tracking failure block applications.
+For application inserts during agent runs, collect rows in memory and write once with `db_batch_insert.py --apps`; it also writes initial `status_history` rows. `db.py add` is only for manual one-off repairs. For status updates, Gmail logs, duplicate checks, and summaries, use `db.py`. For nightly run logs, prefer `db_batch_insert.py --log-run`. If a DB command fails, report the error and continue the browser work. Do not let a tracking failure block applications.
 
 ## Browser Workflow
 
@@ -142,12 +145,12 @@ The nightly run is long. Follow these to cut tool calls and token usage:
 3. Score ALL job cards from a single `read_page` BEFORE opening anything. This produces the full ordered apply/skip plan upfront — no re-reading.
 4. Always use `browser_batch` to group click + wait + read into one round trip. Never one browser action per call.
 5. DB writes: collect all applications in memory and write them in ONE batched command at the LOG stage, not one `db.py add` per job.
-6. DB on this mount throws `sqlite3.OperationalError: disk I/O error` (virtiofs locking). Use `python3 scripts/db_batch_insert.py` — it handles this automatically via /var/tmp. Do NOT use /tmp (permission denied). Do not retry db.py per row.
+6. DB on this mount can throw `sqlite3.OperationalError: disk I/O error` when SQLite writes directly. The DB helpers now serialize writes through a temp-copy + lock strategy. Use only `python3 scripts/db.py ...` and `python3 scripts/db_batch_insert.py ...`; never run raw SQLite writes or retry per row.
 7. Do not re-screenshot to "verify" something a prior tool result already confirmed (toast text, "Applied" label, navigation result).
 8. **`get_page_text` lies about popup visibility** — it returns ALL DOM content including hidden elements. Always use JavaScript `el.offsetParent !== null` to check if an element is truly visible on screen.
 9. **Instahyre: Apply auto-advances the modal to the next card, AND the "similar jobs" popup overlays it.** The Cancel button only closes the popup — the underlying modal often stays open with the NEXT card already loaded. Workflow: click Apply → wait 2.5s → capture `{titles, cancelBtns}` → click Cancel → rebuild __opp_cards → if count dropped by 1, that card was applied. The next card title in `titles` tells you what's in the modal now (no extra View click needed if you want to apply it). If `__opp_cards.length` did NOT drop, the popup intercepted — re-click the same card and Apply again.
 10. **Scoring rule:** ALL backend and fullstack roles score ≥ 4 regardless of language stack. Only skip frontend-only, mobile-only, pure DevOps, or hard 5+ year minimum roles.
-11. **DB temp path:** `/var/tmp/apps_work.db` can become permission-denied across sessions. `db_batch_insert.py` now auto-falls back to `/tmp/jobdb/apps_work.db`. If both fail, `mkdir -p /tmp/jobdb && rm -f /tmp/jobdb/apps_work.db` then retry.
+11. **DB temp path:** DB helpers prefer a writable temp directory and can be overridden with `JOB_DB_TMP_DIR` for testing/debugging. If temp DB access fails, `mkdir -p /tmp/jobdb` and retry the same helper command once; do not switch to direct SQLite access.
 12. **LinkedIn synthetic clicks fail:** `element.click()` does NOT open the Easy Apply modal (it's an `<a>` wrapping a span). Use `mcp__Claude_in_Chrome__computer.left_click` with coordinates from a screenshot or `ref` from `find()`. Plan ~6-8 tool calls per LinkedIn Easy Apply — they are NOT cheap. If Instahyre target met, deferring LinkedIn is acceptable; save URLs to `data/pipeline.md`.
 13. **LinkedIn "Save this application?" interstitial appears every Easy Apply click** (LinkedIn caches drafts forever). Click the `×` icon on the popup card (NOT Discard, NOT Save) — that closes the popup but keeps the underlying Easy Apply modal open at Contact step. Discard closes both.
 14. **LinkedIn lazy-load:** `li[data-occludable-job-id]` cards beyond index 6 don't populate via JS scroll. Use real `computer.scroll` or rotate keywords accepting ~7 cards per query.

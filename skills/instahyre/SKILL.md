@@ -119,7 +119,7 @@ Do NOT call db.py per job. Keep an in-memory list. At the end, write all at once
 python3 scripts/db_batch_insert.py --apps '[{"company":"X","role":"Y","platform":"instahyre","score":4,"status":"Applied","location":"Bangalore","notes":"..."}]'
 ```
 
-This script handles the virtiofs disk I/O error automatically (copies to /var/tmp, writes, copies back).
+The DB helpers use a safe temp-copy + lock strategy for mounted SQLite reliability. Never open `data/applications.db` directly, never write one row at a time after each apply, and never retry individual rows after a SQLite error. `db_batch_insert.py --apps` also writes initial `status_history` rows.
 
 ## Error handling
 
@@ -130,7 +130,7 @@ This script handles the virtiofs disk I/O error automatically (copies to /var/tm
 | "Dispatch Network" / stuck modal | Refresh page (`navigate → same URL`), re-read card list |
 | Similar jobs popup Cancel closes main modal | Expected behavior — click View » on next card manually |
 | "Already marked not interested" error | Refresh page — the card list resets to undecided |
-| DB disk I/O error | Use `python3 scripts/db_batch_insert.py` — handles it automatically |
+| DB disk I/O error | Retry the same DB helper once after `mkdir -p /tmp/jobdb`; do not switch to raw SQLite or per-row writes |
 
 ## Output format (end of run)
 ```

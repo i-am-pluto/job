@@ -3,7 +3,7 @@
 DB helper — called by Claude during nightly runs to read/write applications.db.
 Usage:
   python3 scripts/db.py add   --company "Arcana" --role "SDE2 Backend" --platform instahyre --score 4.5 --status Applied --location Bangalore --notes "Strong Kafka match"
-  python3 scripts/db.py update-status --company "Arcana" --role "SDE2 Backend" --status Interview --source gmail --notes "Got interview invite"
+  python3 scripts/db.py update-status --company "Arcana" --role "SDE2 Backend" --platform instahyre --status Interview --source gmail --notes "Got interview invite"
   python3 scripts/db.py list   [--status Applied] [--platform instahyre]
   python3 scripts/db.py summary
   python3 scripts/db.py log-run --instahyre 12 --linkedin 5 --status-updates 3 --summary "..."
@@ -12,79 +12,69 @@ Usage:
 
 import sqlite3
 import argparse
-import json
-import os
 from datetime import datetime, timezone
-
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "applications.db")
+from db_safe import safe_connection
 
 def now():
     return datetime.now(timezone.utc).isoformat()
 
-def get_con():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    return con
-
 def add_application(args):
-    con = get_con()
-    cur = con.cursor()
     try:
-        cur.execute("""
-            INSERT INTO applications (company, role, platform, url, score, status, applied_at, resume_used, location, salary_range, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (args.company, args.role, args.platform, getattr(args, 'url', None),
-              getattr(args, 'score', None), args.status or 'Applied', now(),
-              getattr(args, 'resume', None), getattr(args, 'location', None),
-              getattr(args, 'salary', None), getattr(args, 'notes', None)))
-        app_id = cur.lastrowid
-        cur.execute("""
-            INSERT INTO status_history (application_id, old_status, new_status, changed_at, source, notes)
-            VALUES (?, ?, ?, ?, 'add', ?)
-        """, (app_id, None, args.status or 'Applied', now(), getattr(args, 'notes', None)))
-        con.commit()
+        with safe_connection(write=True) as con:
+            cur = con.cursor()
+            cur.execute("""
+                INSERT INTO applications (company, role, platform, url, score, status, applied_at, resume_used, location, salary_range, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (args.company, args.role, args.platform, getattr(args, 'url', None),
+                  getattr(args, 'score', None), args.status or 'Applied', now(),
+                  getattr(args, 'resume', None), getattr(args, 'location', None),
+                  getattr(args, 'salary', None), getattr(args, 'notes', None)))
+            app_id = cur.lastrowid
+            cur.execute("""
+                INSERT INTO status_history (application_id, old_status, new_status, changed_at, source, notes)
+                VALUES (?, ?, ?, ?, 'add', ?)
+            """, (app_id, None, args.status or 'Applied', now(), getattr(args, 'notes', None)))
         print(f"✓ Added: {args.company} — {args.role} [{args.platform}]")
     except sqlite3.IntegrityError:
         print(f"⚠ Already exists: {args.company} — {args.role} [{args.platform}] (use update-status)")
-    finally:
-        con.close()
 
 def update_status(args):
-    con = get_con()
-    cur = con.cursor()
-    cur.execute("SELECT id, status FROM applications WHERE company=? AND role=?",
-                (args.company, args.role))
-    row = cur.fetchone()
-    if not row:
-        print(f"✗ Not found: {args.company} — {args.role}")
-        con.close()
-        return
-    old_status = row['status']
-    cur.execute("UPDATE applications SET status=? WHERE id=?", (args.status, row['id']))
-    cur.execute("""
-        INSERT INTO status_history (application_id, old_status, new_status, changed_at, source, notes)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (row['id'], old_status, args.status, now(),
-          getattr(args, 'source', 'manual'), getattr(args, 'notes', None)))
-    con.commit()
-    con.close()
+    with safe_connection(write=True) as con:
+        cur = con.cursor()
+        if getattr(args, 'platform', None):
+            cur.execute("SELECT id, status FROM applications WHERE company=? AND role=? AND platform=?",
+                        (args.company, args.role, args.platform))
+        else:
+            cur.execute("SELECT id, status FROM applications WHERE company=? AND role=?",
+                        (args.company, args.role))
+        row = cur.fetchone()
+        if not row:
+            suffix = f" [{args.platform}]" if getattr(args, 'platform', None) else ""
+            print(f"✗ Not found: {args.company} — {args.role}{suffix}")
+            return
+        old_status = row['status']
+        cur.execute("UPDATE applications SET status=? WHERE id=?", (args.status, row['id']))
+        cur.execute("""
+            INSERT INTO status_history (application_id, old_status, new_status, changed_at, source, notes)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (row['id'], old_status, args.status, now(),
+              getattr(args, 'source', 'manual'), getattr(args, 'notes', None)))
     print(f"✓ Updated: {args.company} — {args.role}: {old_status} → {args.status}")
 
 def list_applications(args):
-    con = get_con()
-    cur = con.cursor()
-    query = "SELECT company, role, platform, status, score, applied_at, location, notes FROM applications WHERE 1=1"
-    params = []
-    if getattr(args, 'status', None):
-        query += " AND status=?"
-        params.append(args.status)
-    if getattr(args, 'platform', None):
-        query += " AND platform=?"
-        params.append(args.platform)
-    query += " ORDER BY applied_at DESC"
-    cur.execute(query, params)
-    rows = cur.fetchall()
-    con.close()
+    with safe_connection(write=False) as con:
+        cur = con.cursor()
+        query = "SELECT company, role, platform, status, score, applied_at, location, notes FROM applications WHERE 1=1"
+        params = []
+        if getattr(args, 'status', None):
+            query += " AND status=?"
+            params.append(args.status)
+        if getattr(args, 'platform', None):
+            query += " AND platform=?"
+            params.append(args.platform)
+        query += " ORDER BY applied_at DESC"
+        cur.execute(query, params)
+        rows = cur.fetchall()
 
     if not rows:
         print("No applications found.")
@@ -99,15 +89,14 @@ def list_applications(args):
     print(f"\nTotal: {len(rows)}")
 
 def summary(args):
-    con = get_con()
-    cur = con.cursor()
-    cur.execute("SELECT status, COUNT(*) as cnt FROM applications GROUP BY status ORDER BY cnt DESC")
-    rows = cur.fetchall()
-    cur.execute("SELECT platform, COUNT(*) as cnt FROM applications GROUP BY platform ORDER BY cnt DESC")
-    platforms = cur.fetchall()
-    cur.execute("SELECT COUNT(*) as cnt FROM applications WHERE applied_at >= date('now', '-7 days')")
-    week = cur.fetchone()
-    con.close()
+    with safe_connection(write=False) as con:
+        cur = con.cursor()
+        cur.execute("SELECT status, COUNT(*) as cnt FROM applications GROUP BY status ORDER BY cnt DESC")
+        rows = cur.fetchall()
+        cur.execute("SELECT platform, COUNT(*) as cnt FROM applications GROUP BY platform ORDER BY cnt DESC")
+        platforms = cur.fetchall()
+        cur.execute("SELECT COUNT(*) as cnt FROM applications WHERE applied_at >= date('now', '-7 days')")
+        week = cur.fetchone()
 
     print("\n=== Application Summary ===")
     print("\nBy Status:")
@@ -119,33 +108,28 @@ def summary(args):
     print(f"\nLast 7 days: {week['cnt']} applications")
 
 def log_run(args):
-    con = get_con()
-    cur = con.cursor()
-    cur.execute("""
-        INSERT INTO run_log (run_at, instahyre_applied, linkedin_applied, status_updates, errors, summary)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (now(), getattr(args, 'instahyre', 0), getattr(args, 'linkedin', 0),
-          getattr(args, 'status_updates', 0), getattr(args, 'errors', None),
-          getattr(args, 'summary', None)))
-    con.commit()
-    con.close()
+    with safe_connection(write=True) as con:
+        cur = con.cursor()
+        cur.execute("""
+            INSERT INTO run_log (run_at, instahyre_applied, linkedin_applied, status_updates, errors, summary)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (now(), getattr(args, 'instahyre', 0), getattr(args, 'linkedin', 0),
+              getattr(args, 'status_updates', 0), getattr(args, 'errors', None),
+              getattr(args, 'summary', None)))
     print(f"✓ Run logged: Instahyre={args.instahyre}, LinkedIn={args.linkedin}, StatusUpdates={args.status_updates}")
 
 def log_gmail(args):
-    con = get_con()
-    cur = con.cursor()
     try:
-        cur.execute("""
-            INSERT INTO gmail_scan_log (message_id, sender, subject, received_at, action_taken, scanned_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (args.message_id, getattr(args, 'sender', None), getattr(args, 'subject', None),
-              getattr(args, 'received', None), getattr(args, 'action', 'ignored'), now()))
-        con.commit()
+        with safe_connection(write=True) as con:
+            cur = con.cursor()
+            cur.execute("""
+                INSERT INTO gmail_scan_log (message_id, sender, subject, received_at, action_taken, scanned_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (args.message_id, getattr(args, 'sender', None), getattr(args, 'subject', None),
+                  getattr(args, 'received', None), getattr(args, 'action', 'ignored'), now()))
         print(f"✓ Gmail message logged: {args.message_id}")
     except sqlite3.IntegrityError:
         print(f"⚠ Already logged: {args.message_id}")
-    finally:
-        con.close()
 
 def main():
     parser = argparse.ArgumentParser(description="Job applications DB helper")
@@ -169,6 +153,7 @@ def main():
     p.add_argument('--company', required=True)
     p.add_argument('--role', required=True)
     p.add_argument('--status', required=True)
+    p.add_argument('--platform')
     p.add_argument('--source', default='manual')
     p.add_argument('--notes')
 

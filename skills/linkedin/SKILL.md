@@ -158,7 +158,7 @@ python3 scripts/db_batch_insert.py --apps '[
 ]'
 ```
 
-**Do not write per-job.** Batch at the end.
+**Do not write per-job.** Batch at the end. The DB helpers use a safe temp-copy + lock strategy for mounted SQLite reliability; never open `data/applications.db` directly or retry individual rows after a SQLite error. `db_batch_insert.py --apps` also writes initial `status_history` rows.
 
 ---
 

@@ -102,6 +102,8 @@ One screenshot after submit for confirmation record. No other screenshots.
 If called from LinkedIn skill: add to that run's in-memory batch.
 If standalone: `python3 scripts/db_batch_insert.py --apps '[{"company":"X","role":"Y","platform":"greenhouse","score":4,"location":"L","notes":"..."}]'`
 
+The DB helpers use a safe temp-copy + lock strategy for mounted SQLite reliability. Never open `data/applications.db` directly or retry individual rows after a SQLite error. `db_batch_insert.py --apps` also writes initial `status_history` rows.
+
 ---
 
 ## Login walls — Google first, then email sign-up

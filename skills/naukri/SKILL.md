@@ -204,6 +204,8 @@ python3 scripts/db_batch_insert.py --apps '[
 
 Use `"platform":"naukri"` for direct applies and `"naukri-external"` for company-site redirects.
 
+The DB helpers use a safe temp-copy + lock strategy for mounted SQLite reliability. Never open `data/applications.db` directly, never write one row at a time after each apply, and never retry individual rows after a SQLite error. `db_batch_insert.py --apps` also writes initial `status_history` rows.
+
 ---
 
 ## Screenshot policy
