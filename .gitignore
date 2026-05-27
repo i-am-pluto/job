@@ -1,0 +1,15 @@
+# Personal data (user fills these)
+data/pipeline.md
+output/*
+!output/.gitkeep
+
+# User config and customization (never auto-updated)
+config/profile.yml
+
+# Generated
+.resolved-prompt-*
+
+# OS
+.DS_Store
+*.mov
+*.mp4

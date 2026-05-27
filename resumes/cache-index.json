@@ -1,0 +1,29 @@
+{
+  "_comment": "Resume cache. The nightly task classifies each job to a tag and REUSES the cached PDF. It only tunes a fresh resume when a job is a poor fit for every archetype. Keeps token cost low.",
+  "updated": "2026-05-24",
+  "max_tuned_variants": 8,
+  "archetypes": [
+    {
+      "tag": "general-backend",
+      "md": "resumes/base.md",
+      "pdf": "output/base.pdf",
+      "description": "Default. General backend / SDE roles, Java + Spring Boot core.",
+      "signals": ["java", "kotlin", "spring boot", "backend", "sde", "sde2", "sde3", "microservices", "rest api", "software engineer"]
+    },
+    {
+      "tag": "distributed-data",
+      "md": "resumes/backend-systems.md",
+      "pdf": "output/backend-systems.pdf",
+      "description": "Distributed systems, data platforms, cloud infra, observability.",
+      "signals": ["distributed systems", "data platform", "data pipeline", "etl", "apache spark", "kafka", "kubernetes", "infrastructure", "platform engineering", "observability", "sre", "scale", "big data"]
+    },
+    {
+      "tag": "ai-backend",
+      "md": "resumes/ai-backend.md",
+      "pdf": "output/ai-backend.pdf",
+      "description": "AI/LLM, agentic systems, AI-backend hybrid roles.",
+      "signals": ["ai", "llm", "genai", "bedrock", "agent", "agentic", "mcp", "rag", "embeddings", "ml platform", "anthropic", "openai", "model serving"]
+    }
+  ],
+  "tuned": []
+}
