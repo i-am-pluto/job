@@ -1,6 +1,6 @@
 {
   "name": "job-search",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "description": "Automated job application system for Instahyre, LinkedIn, Naukri, and external ATS workflows.",
   "author": {
     "name": "i-am-pluto",
@@ -18,7 +18,27 @@
     "instahyre",
     "ats"
   ],
-  "skills": "./skills/",
+  "skills": [
+    "./skills/instahyre",
+    "./skills/linkedin",
+    "./skills/naukri",
+    "./skills/greenhouse",
+    "./skills/generic-apply",
+    "./skills/resume-tuner"
+  ],
+  "agents": [
+    "./agents/job-ceo.md",
+    "./agents/instahyre-agent.md",
+    "./agents/linkedin-agent.md",
+    "./agents/naukri-agent.md",
+    "./agents/greenhouse-agent.md",
+    "./agents/generic-apply-agent.md"
+  ],
+  "commands": [
+    "./commands/nightly-job-apply.md",
+    "./commands/job-apply-status.md",
+    "./commands/tune-job-search.md"
+  ],
   "interface": {
     "displayName": "Job Search",
     "shortDescription": "Automate job search workflows and application tracking.",
