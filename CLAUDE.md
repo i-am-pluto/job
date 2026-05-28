@@ -130,7 +130,7 @@ For application inserts during agent runs, collect rows in memory and write once
 
 ## Browser Workflow
 
-Use Claude-in-Chrome MCP browser tools for Gmail, Instahyre, and LinkedIn.
+Use Claude-in-Chrome MCP browser tools for Gmail, Instahyre, LinkedIn, and Naukri.
 
 1. Prefer already-open tabs for each domain.
 2. If no tab group exists, create one and navigate the tab.
@@ -182,9 +182,9 @@ Run stages in this order:
 
 1. `STATUS`: Gmail status scan, Instahyre Activity responses.
 2. `ACTION`: DB updates only; collect human-needed items.
-3. `SCAN`: Instahyre matching jobs and LinkedIn jobs (role-anchored keyword matrix; include Easy Apply AND external-apply jobs).
+3. `SCAN`: Instahyre matching jobs, Naukri jobs, and LinkedIn jobs (role-anchored keyword matrix; include Easy Apply AND external-apply jobs). All three platforms scan in parallel.
 4. `RESUME`: choose cached PDFs; tune at most 3 fresh markdown resume variants.
-5. `APPLY`: Instahyre target around 15, LinkedIn target 15+ (run the multi-keyword search matrix in `skills/linkedin/SKILL.md` until met).
+5. `APPLY`: Instahyre target ~15, Naukri target ~15, LinkedIn target 15+. All three platforms apply in parallel.
 6. `LOG`: write run log and print DB summary.
 
 ## Final Report Format
@@ -192,6 +192,7 @@ Run stages in this order:
 ```text
 Nightly run YYYY-MM-DD:
   Instahyre: X applied, Y skipped (low score)
+  Naukri: X applied, Y skipped (low score)
   LinkedIn: A applied (A1 Easy Apply + A2 external company-site), B saved to pipeline (login/CAPTCHA blocked)
   Status updates: C
   Resumes: D reused from cache, E newly tuned

@@ -7,7 +7,7 @@ Invoke `job-ceo` to produce a status-only report.
 
 Required behavior:
 
-1. Read `AGENTS.md`, `profile.md`, `data/pipeline.md`, `data/memory/ceo.md`, `resumes/cache-index.json`, and available run/application summaries.
+1. Read `profile.md`, `data/pipeline.md`, `data/memory/ceo.md`, `resumes/cache-index.json`, and available run/application summaries.
 2. Do not submit applications.
 3. Do not modify resumes.
 4. Do not evaluate or change DB implementation details.
