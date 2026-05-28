@@ -1,3 +1,9 @@
+---
+name: instahyre
+description: This skill should be used when scanning Instahyre matching jobs, applying through Instahyre one-click apply, or finding company-site application paths from Instahyre opportunities.
+version: 1.0.0
+---
+
 # Instahyre Job Application Skill
 
 Use Instahyre as a job-discovery source, then prefer applying on the company's own careers/ATS site through `skills/generic-apply/SKILL.md`. Instahyre one-click apply is fallback when no reliable external company-site application path is available or when the company-site path is blocked.

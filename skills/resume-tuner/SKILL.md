@@ -1,3 +1,9 @@
+---
+name: resume-tuner
+description: This skill should be used when choosing, tuning, generating, or caching resumes for a specific job description while preserving truthful resume claims.
+version: 1.0.0
+---
+
 # Resume Tuner Skill
 
 Tune Parikshit's resume for a specific job description. Re-emphasize and reorder — never fabricate. The output is a tuned `.md` file saved to `resumes/tuned/` and a PDF.

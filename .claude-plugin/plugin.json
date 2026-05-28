@@ -1,0 +1,21 @@
+{
+  "name": "job-search",
+  "version": "1.0.0",
+  "description": "Automated job application system for Instahyre, LinkedIn, Naukri, and external ATS workflows.",
+  "author": {
+    "name": "i-am-pluto",
+    "url": "https://github.com/i-am-pluto/job"
+  },
+  "homepage": "https://github.com/i-am-pluto/job",
+  "repository": "https://github.com/i-am-pluto/job",
+  "license": "UNLICENSED",
+  "keywords": [
+    "jobs",
+    "applications",
+    "resume",
+    "linkedin",
+    "naukri",
+    "instahyre",
+    "ats"
+  ]
+}

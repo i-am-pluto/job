@@ -1,3 +1,9 @@
+---
+name: naukri
+description: This skill should be used when scanning Naukri jobs, boosting the Naukri profile, applying directly on Naukri, or handling Naukri company-site redirects.
+version: 1.0.0
+---
+
 # Naukri Job Application Skill
 
 Apply to backend/SDE jobs on Naukri.com. Prefers direct Naukri apply (one-click); for "Apply on company site" jobs, hands off to `skills/generic-apply/SKILL.md`. Includes a daily profile boost routine.

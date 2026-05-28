@@ -1,3 +1,9 @@
+---
+name: linkedin
+description: This skill should be used when discovering LinkedIn jobs, handling LinkedIn Easy Apply, following LinkedIn external Apply links, or saving LinkedIn leads to the pipeline.
+version: 1.0.0
+---
+
 # LinkedIn Job Application Skill
 
 Apply to backend jobs with a strong preference for the company's own careers/ATS site via `skills/generic-apply/SKILL.md`. LinkedIn is primarily a discovery source; Easy Apply is fallback when no company-site path is available. Both external and Easy Apply submissions count toward target.
