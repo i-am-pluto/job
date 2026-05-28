@@ -17,5 +17,67 @@
     "naukri",
     "instahyre",
     "ats"
+  ],
+  "skills": [
+    {
+      "name": "instahyre",
+      "path": "skills/instahyre/SKILL.md"
+    },
+    {
+      "name": "linkedin",
+      "path": "skills/linkedin/SKILL.md"
+    },
+    {
+      "name": "naukri",
+      "path": "skills/naukri/SKILL.md"
+    },
+    {
+      "name": "generic-apply",
+      "path": "skills/generic-apply/SKILL.md"
+    },
+    {
+      "name": "resume-tuner",
+      "path": "skills/resume-tuner/SKILL.md"
+    }
+  ],
+  "agents": [
+    {
+      "name": "job-ceo",
+      "path": "agents/job-ceo.md"
+    },
+    {
+      "name": "instahyre-agent",
+      "path": "agents/instahyre-agent.md"
+    },
+    {
+      "name": "linkedin-agent",
+      "path": "agents/linkedin-agent.md"
+    },
+    {
+      "name": "naukri-agent",
+      "path": "agents/naukri-agent.md"
+    },
+    {
+      "name": "generic-apply-agent",
+      "path": "agents/generic-apply-agent.md"
+    },
+    {
+      "name": "profile-agent",
+      "path": "agents/profile-agent.md"
+    }
+  ],
+  "commands": [
+    {
+      "name": "nightly-job-apply",
+      "path": "commands/nightly-job-apply.md"
+    },
+    {
+      "name": "job-apply-status",
+      "path": "commands/job-apply-status.md"
+    },
+    {
+      "name": "tune-job-search",
+      "path": "commands/tune-job-search.md"
+    }
   ]
 }
