@@ -1,7 +1,7 @@
 ---
 name: linkedin
 description: This skill should be used when discovering LinkedIn jobs, handling LinkedIn Easy Apply, following LinkedIn external Apply links, or saving LinkedIn leads to the pipeline.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # LinkedIn Job Application Skill

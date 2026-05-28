@@ -1,7 +1,7 @@
 ---
 name: generic-apply
 description: This skill should be used when applying to external company careers pages or ATS portals such as Greenhouse, Lever, Workday, SmartRecruiters, Workable, or unknown job application forms.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Generic Job Application Skill

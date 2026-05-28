@@ -1,7 +1,7 @@
 ---
 name: instahyre
 description: This skill should be used when scanning Instahyre matching jobs, applying through Instahyre one-click apply, or finding company-site application paths from Instahyre opportunities.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Instahyre Job Application Skill

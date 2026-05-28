@@ -1,7 +1,7 @@
 ---
 name: naukri
 description: This skill should be used when scanning Naukri jobs, boosting the Naukri profile, applying directly on Naukri, or handling Naukri company-site redirects.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Naukri Job Application Skill

@@ -1,7 +1,7 @@
 ---
 name: resume-tuner
 description: This skill should be used when choosing, tuning, generating, or caching resumes for a specific job description while preserving truthful resume claims.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Resume Tuner Skill
