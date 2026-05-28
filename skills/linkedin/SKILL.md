@@ -16,18 +16,18 @@ Apply to backend jobs with a strong preference for the company's own careers/ATS
 
 ## Profile (read once at start, then use inline tables below — do not re-read mid-run)
 
-Read `profile.md`, `resumes/base.md`. Then use these without looking up profile.md again:
+Read `profile.md`, `resumes/base.md`. Then use the **Identity And Contact**, **Compensation And Availability**, and **Common Application Answers** sections without looking up `profile.md` again:
 
 | Field | Value |
 |---|---|
-| Current CTC | **28** (type the number only — no LPA, no text) |
-| Expected CTC | **35** (number only) |
-| Notice period | **60** (number only, means days) |
-| Java / Python / Spring Boot / AWS (years) | **2** |
-| Work authorization India | **Yes** |
-| Willing to relocate | **Yes** |
-| Immediate joiner | **No** |
-| Sponsorship (outside India) | **Yes** |
+| Current CTC | Read from `profile.md`; type the number only when required |
+| Expected CTC | Read from `profile.md`; type the number only when required |
+| Notice period | Read from `profile.md`; type days only when required |
+| Skill years | Read from `profile.md` Common Application Answers |
+| Work authorization India | Read from `profile.md` |
+| Willing to relocate | Read from `profile.md` |
+| Immediate joiner | Derive from notice period in `profile.md` |
+| Sponsorship outside India | Read from `profile.md` |
 
 **Scoring rule:** ALL backend and fullstack roles ≥ 4. Skip only: hard 5+ yr minimum stated in JD, frontend/mobile/pure-DevOps, "No longer accepting applications".
 
@@ -80,8 +80,8 @@ browser_batch: [click "Apply" button] → [wait 3s] → [get_page_text on new ta
 Switch to the new tab. Hand off to `skills/generic-apply/SKILL.md`. That skill handles company careers sites, ATS forms, Google login, account creation, form-filling, and submit.
 
 If a login/account wall blocks the company-site application, follow `generic-apply`:
-- First try Google login with **parikshit.p2002@gmail.com**.
-- If Google login is unavailable but email sign-up is available, sign up with **parikshit.p2002@gmail.com**.
+- First try Google login with the email from `profile.md`.
+- If Google login is unavailable but email sign-up is available, sign up with the email from `profile.md`.
 - Never enter or invent a password manually; stop/log if a password or CAPTCHA is required.
 
 Skip/save URL to `data/pipeline.md` only if: Google login and email sign-up are unavailable or blocked, CAPTCHA appears, Workday requires password/manual account creation, or a required field is not in profile.
@@ -123,15 +123,12 @@ LinkedIn uses custom web components. Standard DOM selects return nothing. Always
 
 | Field label pattern | Tool to use | Value |
 |---|---|---|
-| "current.*ctc" / "current.*salary" | `find(label)` → check if dropdown or text → `form_input` if select, `triple_click + type "28"` if text | 28 |
-| "expected.*ctc" / "expected.*salary" | same pattern | 35 |
-| "notice period" | `find(label)` → `triple_click + type "60"` or `form_input` | 60 |
-| "years.*java" / "java.*experience" | `find(label)` → `triple_click + type "2"` | 2 |
-| "years.*python" | same | 2 |
-| "years.*spring" | same | 2 |
-| "years.*aws" | same | 2 |
-| Yes/No radio (relocate, authorization) | `find("Yes")` scoped to that question → `left_click` | Yes |
-| Commute / on-site willingness | Radio button — `find("Yes radio")` or click by coordinate if find fails | Yes |
+| "current.*ctc" / "current.*salary" | `find(label)` → check if dropdown or text → `form_input` if select, type the profile current CTC number if text | Current CTC from `profile.md` |
+| "expected.*ctc" / "expected.*salary" | same pattern | Expected CTC from `profile.md` |
+| "notice period" | `find(label)` → type profile notice days or `form_input` | Notice period from `profile.md` |
+| "years.*<skill>" / "<skill>.*experience" | `find(label)` → type matching profile skill years | Matching skill years from `profile.md` |
+| Yes/No radio (relocate, authorization) | Choose the answer from `profile.md` scoped to that question | Answer from `profile.md` |
+| Commute / on-site willingness | Radio button — choose answer from `profile.md` | Answer from `profile.md` |
 
 **WARN:** If a CTC field only offers Yes/No/Select options (no free-text), pick "Yes". Verify by checking if `form_input` succeeds with the label before trying to type.
 

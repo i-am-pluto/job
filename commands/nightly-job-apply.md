@@ -1,9 +1,9 @@
 ---
 name: nightly-job-apply
-description: Run Parikshit's autonomous nightly job-application workflow through the job CEO agent.
+description: Run the user's autonomous nightly job-application workflow through the job CEO agent.
 ---
 
-Invoke `job-ceo` to run Parikshit Dabas's nightly job-application workflow.
+Invoke `job-ceo` to run the user's nightly job-application workflow.
 
 This command is authorized for autonomous submission under the `nightly-job-apply` mode described in `AGENTS.md` and `CLAUDE.md`.
 

@@ -16,16 +16,16 @@ Apply to backend/SDE jobs on Naukri.com. Prefers direct Naukri apply (one-click)
 
 ## Profile (read once at start — do not re-read mid-run)
 
-Read `profile.md` and `resumes/base.md` once. Then use these inline:
+Read `profile.md` and `resumes/base.md` once. Then use the profile values inline:
 
 | Field | Value |
 |---|---|
-| Current CTC | **28** (number only — no LPA, no text) |
-| Expected CTC | **35** (number only) |
-| Notice period | **60** (days) |
-| Total experience | **2** years |
-| Work authorization India | **Yes** |
-| Willing to relocate | **Yes** |
+| Current CTC | Read from `profile.md`; type the number only when required |
+| Expected CTC | Read from `profile.md`; type the number only when required |
+| Notice period | Read from `profile.md`; type days only when required |
+| Total experience | Read from `profile.md` Current Role |
+| Work authorization India | Read from `profile.md` |
+| Willing to relocate | Read from `profile.md` |
 
 **Scoring rule:** ALL backend and fullstack roles score ≥ 4 regardless of language stack. Skip only: hard 5+ yr minimum stated in the JD, frontend-only, mobile-only, pure DevOps/QA, or "No longer accepting applications".
 
@@ -162,15 +162,15 @@ If questionnaire present, fill per this table:
 
 | Question pattern | Answer |
 |---|---|
-| "Current CTC" / "Current Salary" | 28 |
-| "Expected CTC" / "Expected Salary" | 35 |
-| "Notice Period" | 60 |
-| "Years of experience in [skill]" | 2 |
-| "Are you comfortable relocating?" | Yes |
-| "Work from office?" | Yes |
-| "Are you authorized to work in India?" | Yes |
-| "Highest qualification" | B.Tech / B.E. |
-| "Current location" | Delhi |
+| "Current CTC" / "Current Salary" | Current CTC from `profile.md` |
+| "Expected CTC" / "Expected Salary" | Expected CTC from `profile.md` |
+| "Notice Period" | Notice period from `profile.md` |
+| "Years of experience in [skill]" | Matching skill years from `profile.md` |
+| "Are you comfortable relocating?" | Relocation answer from `profile.md` |
+| "Work from office?" | Location/work-mode preference from `profile.md` |
+| "Are you authorized to work in India?" | Work authorization answer from `profile.md` |
+| "Highest qualification" | Highest education from `profile.md` |
+| "Current location" | Location from `profile.md` |
 
 Use `find(label text)` to locate each field, then `form_input` or `triple_click + type`. After filling, `find("Submit" or "Apply" button)` → click.
 
@@ -186,7 +186,7 @@ Use `find(label text)` to locate each field, then `form_input` or `triple_click 
 5. Hand off to skills/generic-apply/SKILL.md
 ```
 
-If external site requires login: try Google login with **parikshit.p2002@gmail.com** first. If Google unavailable but email sign-up exists, sign up with **parikshit.p2002@gmail.com**. Never enter a password manually. Skip/save to `data/pipeline.md` if CAPTCHA or password wall appears.
+If external site requires login: try Google login with the email from `profile.md` first. If Google unavailable but email sign-up exists, sign up with the email from `profile.md`. Never enter a password manually. Skip/save to `data/pipeline.md` if CAPTCHA or password wall appears.
 
 ---
 

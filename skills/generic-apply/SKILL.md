@@ -17,17 +17,17 @@ Apply to any external job portal. Called by the LinkedIn skill for external-appl
 
 | Field | Value |
 |---|---|
-| First name | Parikshit |
-| Last name | Dabas |
-| Email | parikshit.p2002@gmail.com |
-| Phone | +91-XXXXXXXXXX (read from profile.md once) |
-| Current CTC | **28** (number only) |
-| Expected CTC | **35** (number only) |
-| Notice period | **60** (number only, days) |
-| Java / Python / Spring Boot / AWS (years) | **2** |
-| Work authorization India | Yes |
-| LinkedIn URL | read from profile.md |
-| GitHub URL | read from profile.md |
+| First name | Read from `profile.md` Identity And Contact |
+| Last name | Read from `profile.md` Identity And Contact |
+| Email | Read from `profile.md` Identity And Contact |
+| Phone | Read from `profile.md` Identity And Contact |
+| Current CTC | Read from `profile.md`; number only when required |
+| Expected CTC | Read from `profile.md`; number only when required |
+| Notice period | Read from `profile.md`; days only when required |
+| Skill years | Read from `profile.md` Common Application Answers |
+| Work authorization India | Read from `profile.md` |
+| LinkedIn URL | Read from `profile.md` |
+| GitHub URL | Read from `profile.md` |
 
 ## Resume variants
 | Role type | PDF |
@@ -49,12 +49,12 @@ Single page. Fields in order: First name, Last name, Email, Phone, Resume (file 
 - Submit button: bottom of page, label "Submit Application"
 
 ### Lever (`jobs.lever.co`)
-Single page. Fields: Full name (one field), Email, Phone, Current company (use "Arcesium"), LinkedIn, GitHub, Portfolio (skip), Resume upload, free-text questions.
+Single page. Fields: Full name (one field), Email, Phone, Current company (read from `profile.md`), LinkedIn, GitHub, Portfolio (skip), Resume upload, free-text questions.
 - Resume: `find("resume upload")` → `file_upload`
-- Free-text: answer from profile.md context; "Why this role?" → 2 sentences from JD + one relevant Arcesium achievement
+- Free-text: answer from `profile.md` context; "Why this role?" -> 2 sentences from JD + one relevant achievement from the resume truth pool
 
 ### Workday (`myworkdayjobs.com`, `*.wd*.myworkdayjobs.com`)
-Often requires account creation. First try Google login with **parikshit.p2002@gmail.com** if offered. If not, use email sign-up with **parikshit.p2002@gmail.com** only when the flow does not require inventing/entering a password manually. If a password, CAPTCHA, or manual verification blocks progress, skip and save to `data/pipeline.md`.
+Often requires account creation. First try Google login with the email from `profile.md` if offered. If not, use email sign-up with that email only when the flow does not require inventing/entering a password manually. If a password, CAPTCHA, or manual verification blocks progress, skip and save to `data/pipeline.md`.
 Exception: if user confirms they have a Workday account, proceed multi-step: upload resume first (auto-fills), then verify each field.
 
 ### SmartRecruiters (`jobs.smartrecruiters.com`)
@@ -90,8 +90,8 @@ read_page filter=interactive  ← one call to get ALL field refs
 Then fill everything: `form_input` for selects/dropdowns, `triple_click + type` for text. Do not screenshot after each field.
 
 - Numbers only for CTC/notice/years — no text suffixes.
-- Cover letter: skip unless required. If required: write inline (3 sentences: role fit + Arcesium distributed systems story + motivation).
-- "Challenging project" answers: use the Arcesium connector platform story from profile.md.
+- Cover letter: skip unless required. If required: write inline (3 sentences: role fit + relevant resume proof point + motivation).
+- "Challenging project" answers: use the strongest matching project or work story from `profile.md` and the resume truth pool.
 - If a required field is not in profile.md → stop (nightly: log it and skip this job; interactive: ask user).
 
 **Step 4 — Resume upload:**
@@ -117,11 +117,11 @@ The DB helpers use a safe temp-copy + lock strategy for mounted SQLite reliabili
 If a login/account wall appears, do not skip immediately. Good companies often route applications through their own site or ATS, so handle account creation in this order:
 
 1. `find("Sign in with Google")` or `find("Continue with Google")`
-2. If found → click it → Google account picker opens → select or type **parikshit.p2002@gmail.com**
+2. If found -> click it -> Google account picker opens -> select or type the email from `profile.md`
 3. If already signed into that account in Chrome → it auto-selects → approve
 4. After login, continue filling the form from Step 3
 5. If Google login is unavailable, look for email sign-up/register/create-account flow
-6. Sign up with **parikshit.p2002@gmail.com** when the site can send a magic link/OTP or otherwise proceed without manually entering a password
+6. Sign up with the email from `profile.md` when the site can send a magic link/OTP or otherwise proceed without manually entering a password
 7. After sign-up, continue filling the form from Step 3
 
 If only email+password, only LinkedIn login, CAPTCHA, or manual password creation is available → skip, save URL to `data/pipeline.md`.

@@ -6,7 +6,7 @@ version: 1.0.0
 
 # Resume Tuner Skill
 
-Tune Parikshit's resume for a specific job description. Re-emphasize and reorder — never fabricate. The output is a tuned `.md` file saved to `resumes/tuned/` and a PDF.
+Tune the user's resume for a specific job description. Re-emphasize and reorder — never fabricate. The output is a tuned `.md` file saved to `resumes/tuned/` and a PDF.
 
 ## Token economy — check the cache FIRST
 
@@ -25,7 +25,7 @@ Only continue the workflow below when the result is `TUNE`, or when the user exp
 User says: "tune my resume for [role/company/JD]", "customize my CV for this job", "optimize resume for [URL]", or pastes a JD alongside asking about resume.
 
 ## Core rules (non-negotiable)
-1. **Truth only.** Never add a technology, metric, or role Parikshit hasn't actually done.
+1. **Truth only.** Never add a technology, metric, or role the user hasn't actually done.
 2. **Re-rank before rewrite.** Move bullets, then reorder skills, then rephrase — in that order.
 3. **Preserve voice.** Don't turn "Built X" into "Spearheaded the development of X". Keep his direct, outcome-oriented style.
 4. **Metrics stay exact.** If the source says "~15%", don't change it to "20%".
@@ -36,7 +36,7 @@ User says: "tune my resume for [role/company/JD]", "customize my CV for this job
 - `resumes/ai-backend.md` — AI tooling emphasis
 Any claim from any of these three files can be included in a tuned version.
 
-## Parikshit's key proof points (use these for bullet emphasis decisions)
+## Key proof points (use these for bullet emphasis decisions)
 | Proof point | JD signals that make it relevant |
 |-------------|----------------------------------|
 | Multi-tenant data connector platform (Java/Kotlin/Spring Boot, 10+ domains) | data ingestion, connectors, multi-tenancy, Java/Spring |
@@ -120,7 +120,7 @@ Then show the **change summary**:
 - [item] — not relevant for this role
 
 **Gaps (not added because not truthful):**
-- JD asks for [X] — Parikshit's resumes don't clearly show this. Flag to user.
+- JD asks for [X] — the user's resumes don't clearly show this. Flag to user.
 ```
 
 ### Step 8 — Generate the PDF (Claude-native, no Node)
@@ -155,6 +155,6 @@ If `tuned` already holds `max_tuned_variants` entries, drop the one with the old
 ## What NOT to do
 - Don't add Golang, PHP, Scala, Ruby — not in any source resume
 - Don't inflate "~15% failure rate reduction" to a specific higher number
-- Don't claim 5+ years of experience — he has 2
-- Don't write "Architected end-to-end enterprise-grade solutions" — that's not his voice
+- Don't claim more years of experience than `profile.md` and the source resumes support
+- Don't write "Architected end-to-end enterprise-grade solutions" unless that matches the user's resume voice
 - Don't add a cover letter unless explicitly asked

@@ -5,7 +5,7 @@ model: inherit
 color: green
 ---
 
-You are the Naukri platform agent for Parikshit Dabas's job-search system.
+You are the Naukri platform agent for the user's job-search system.
 
 ## When to invoke
 

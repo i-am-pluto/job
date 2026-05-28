@@ -1,23 +1,25 @@
-# Parikshit's Job Search System
+# User Job Search System
 
-This repo is the operating workspace for Parikshit's job search. Keep mutable profile details in markdown source files, not in scheduled task prompts.
+This repo is the operating workspace for the user's job search. Keep mutable identity details in `config/user.yml`, not in scheduled task prompts.
 
 ## Source Of Truth
 
 Read these before applying, tuning resumes, or answering application questions:
 
-1. `profile.md` — targeting rules, preferences, compensation, location, work authorization, common form answers, fit scoring.
-2. `resumes/base.md` — canonical resume source and truth pool for experience, education, projects, skills, and contact details.
-3. `resumes/backend-systems.md` — resume variant for distributed systems, data platform, Spark/Kafka/Kubernetes, cloud infrastructure.
-4. `resumes/ai-backend.md` — resume variant for AI-backend, LLM tooling, MCP, Bedrock, RAG, developer automation.
-5. `resumes/cache-index.json` — mapping from job signals to cached PDFs.
+1. `config/user.yml` — machine-readable identity and standard application answers.
+2. `profile.md` — generated human-readable targeting rules, preferences, compensation, location, work authorization, common form answers, fit scoring.
+3. `resumes/base.md` — canonical resume source and truth pool for experience, education, projects, skills, and contact details.
+4. `resumes/backend-systems.md` — resume variant for distributed systems, data platform, Spark/Kafka/Kubernetes, cloud infrastructure.
+5. `resumes/ai-backend.md` — resume variant for AI-backend, LLM tooling, MCP, Bedrock, RAG, developer automation.
+6. `resumes/cache-index.json` — mapping from job signals to cached PDFs.
 
-Do not duplicate profile facts in prompts. If a fact changes, update the markdown source first.
+Do not duplicate profile facts in prompts. If identity or application-answer facts change, update `config/user.yml` and regenerate `profile.md`. If targeting/scoring policy changes, update `profile.md`.
 
 ## Repository Map
 
 ```
-profile.md             central job-search profile and application answers
+config/user.yml        machine-readable identity and application answers
+profile.md             generated job-search profile and scoring policy
 
 resumes/
   base.md               canonical resume source
@@ -52,7 +54,7 @@ data/
 
 ### Interactive
 
-When Parikshit is present in the chat:
+When the user is present in the chat:
 
 1. Fill forms and prepare applications, but stop before the final submit.
 2. Show the company, role, score, resume, and key answers.
@@ -60,7 +62,7 @@ When Parikshit is present in the chat:
 
 ### Nightly Scheduled Task
 
-When running `nightly-job-apply`, Parikshit has authorized autonomous application submission:
+When running `nightly-job-apply`, the user has authorized autonomous application submission:
 
 1. Apply directly on Instahyre for fitting jobs.
 2. For LinkedIn jobs: submit Easy Apply, AND for jobs whose `Apply` button redirects to the company's own site/ATS, follow it and submit via the generic-apply skill. Do not skip a job just because it is not Easy Apply.

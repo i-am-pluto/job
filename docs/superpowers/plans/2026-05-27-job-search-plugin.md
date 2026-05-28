@@ -54,13 +54,13 @@ Create `.claude-plugin/plugin.json` with:
 
 ```json
 {
-  "name": "parikshit-job-search",
+  "name": "job-search",
   "version": "1.0.0",
-  "description": "Claude Code plugin for Parikshit Dabas's job-search workflow, including CEO orchestration, platform application agents, and resume strategy.",
+  "description": "Claude Code plugin for the user's job-search workflow, including CEO orchestration, platform application agents, and resume strategy.",
   "author": {
-    "name": "Parikshit Dabas",
-    "email": "parikshit.p2002@gmail.com",
-    "url": "https://github.com/parikshit-dabas"
+    "name": "the user",
+    "email": "user@example.com",
+    "url": "https://github.com/user-profile"
   },
   "keywords": [
     "jobs",
@@ -119,12 +119,12 @@ Create `agents/job-ceo.md` with:
 ```markdown
 ---
 name: job-ceo
-description: Use this agent when orchestrating Parikshit's job-search system across Naukri, Instahyre, LinkedIn, external company-site applications, status review, run summaries, milestones, platform success rates, and resume strategy coordination. Typical triggers include running nightly-job-apply, asking for job-search status, assigning platform quotas, and reviewing what agents should improve. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when orchestrating the user's job-search system across Naukri, Instahyre, LinkedIn, external company-site applications, status review, run summaries, milestones, platform success rates, and resume strategy coordination. Typical triggers include running nightly-job-apply, asking for job-search status, assigning platform quotas, and reviewing what agents should improve. See "When to invoke" in the agent body for worked scenarios.
 model: inherit
 color: blue
 ---
 
-You are the CEO agent for Parikshit Dabas's job-search system. You coordinate specialist agents and enforce the repository's source-of-truth, safety, scoring, duplicate, browser, resume, and logging rules.
+You are the CEO agent for the user's job-search system. You coordinate specialist agents and enforce the repository's source-of-truth, safety, scoring, duplicate, browser, resume, and logging rules.
 
 ## When to invoke
 
@@ -247,7 +247,7 @@ model: inherit
 color: green
 ---
 
-You are the Naukri platform agent for Parikshit Dabas's job-search system.
+You are the Naukri platform agent for the user's job-search system.
 
 ## When to invoke
 
@@ -296,7 +296,7 @@ model: inherit
 color: cyan
 ---
 
-You are the Instahyre platform agent for Parikshit Dabas's job-search system.
+You are the Instahyre platform agent for the user's job-search system.
 
 ## When to invoke
 
@@ -343,7 +343,7 @@ model: inherit
 color: yellow
 ---
 
-You are the LinkedIn platform agent for Parikshit Dabas's job-search system.
+You are the LinkedIn platform agent for the user's job-search system.
 
 ## When to invoke
 
@@ -431,7 +431,7 @@ model: inherit
 color: magenta
 ---
 
-You are the external company-site and ATS application agent for Parikshit Dabas's job-search system.
+You are the external company-site and ATS application agent for the user's job-search system.
 
 ## When to invoke
 
@@ -444,7 +444,7 @@ You are the external company-site and ATS application agent for Parikshit Dabas'
 
 1. Follow `skills/generic-apply/SKILL.md` exactly.
 2. Use `profile.md`, `resumes/base.md`, and `scripts/pick_resume.py` for answers and resume selection.
-3. Try Google login with `parikshit.p2002@gmail.com` when the skill allows it.
+3. Try Google login with `user@example.com` when the skill allows it.
 4. Never enter or invent passwords.
 5. Skip and report CAPTCHA, government ID, OTP, unknown required fields, and unsupported login blockers.
 6. In interactive mode, stop before final submit and ask for confirmation.
@@ -472,12 +472,12 @@ Create `agents/profile-agent.md` with:
 ```markdown
 ---
 name: profile-agent
-description: Use this agent when choosing resumes, tuning resumes, maintaining resume cache entries, comparing active job patterns against Parikshit's profile, or advising the CEO agent on resume strategy. Typical triggers include resume selection during applications, CEO requests for resume performance review, and user requests to tune the job-search profile. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when choosing resumes, tuning resumes, maintaining resume cache entries, comparing active job patterns against the user's profile, or advising the CEO agent on resume strategy. Typical triggers include resume selection during applications, CEO requests for resume performance review, and user requests to tune the job-search profile. See "When to invoke" in the agent body for worked scenarios.
 model: inherit
 color: red
 ---
 
-You are the profile and resume strategy agent for Parikshit Dabas's job-search system.
+You are the profile and resume strategy agent for the user's job-search system.
 
 ## When to invoke
 
@@ -571,10 +571,10 @@ Create `commands/nightly-job-apply.md` with:
 ```markdown
 ---
 name: nightly-job-apply
-description: Run Parikshit's autonomous nightly job-application workflow through the job CEO agent.
+description: Run the user's autonomous nightly job-application workflow through the job CEO agent.
 ---
 
-Invoke `job-ceo` to run Parikshit Dabas's nightly job-application workflow.
+Invoke `job-ceo` to run the user's nightly job-application workflow.
 
 This command is authorized for autonomous submission under the `nightly-job-apply` mode described in `AGENTS.md` and `CLAUDE.md`.
 

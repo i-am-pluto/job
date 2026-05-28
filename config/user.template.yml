@@ -1,0 +1,31 @@
+# Job Search User Configuration Template
+# Fill this with scripts/setup.py. Keep identity and application-answer facts here.
+
+identity:
+  full_name: ""
+  email: ""
+  phone: ""
+  location: ""
+  linkedin: ""
+  github: ""
+
+current_role:
+  current_company: ""
+  current_title: ""
+  experience_years: ""
+
+targeting:
+  target_roles: []
+  remote_preference: ""
+  willing_to_relocate: ""
+
+application_answers:
+  current_ctc: ""
+  expected_ctc: ""
+  notice_days: ""
+  currency: ""
+  work_auth_india: ""
+  skills_years: {}
+  highest_education: ""
+  graduation_year: ""
+  gpa: ""

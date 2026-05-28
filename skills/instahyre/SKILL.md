@@ -24,7 +24,7 @@ For every strong match, first try to locate and use the company's direct applica
 - If no direct link is visible but the company is high quality, briefly check the company website/careers page when it can be found without derailing the run.
 - Use Instahyre's one-click **Apply** only after the company-site route is unavailable, unreliable, or blocked.
 
-Login/account blockers on the external site are handled by `generic-apply`: first try Google login with **parikshit.p2002@gmail.com**; if Google login is unavailable but email sign-up exists, sign up with **parikshit.p2002@gmail.com**. Never enter or invent a password manually.
+Login/account blockers on the external site are handled by `generic-apply`: first try Google login with the email from the **Identity And Contact** section of `profile.md`; if Google login is unavailable but email sign-up exists, sign up with that same email. Never enter or invent a password manually.
 
 ## When this skill triggers
 User says anything like: "apply to Instahyre jobs", "find me jobs on Instahyre", "scan Instahyre", "apply to matching jobs", or pastes the Instahyre opportunities URL.

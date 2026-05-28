@@ -8,18 +8,18 @@
 
 Nightly job apply — run every night at 11:35 PM.
 
-You are running Parikshit's autonomous nightly job application workflow. Parikshit is NOT present. Apply autonomously.
+You are running the user's autonomous nightly job application workflow. The user is NOT present. Apply autonomously.
 
 ## Workspace
-/Users/parikshit/Documents/code/job
+<repo-root>
 
 ## Step 0 — Read source files first (ALL of these, in order)
-1. /Users/parikshit/Documents/code/job/CLAUDE.md
-2. /Users/parikshit/Documents/code/job/profile.md
-3. /Users/parikshit/Documents/code/job/skills/instahyre/SKILL.md
-4. /Users/parikshit/Documents/code/job/skills/naukri/SKILL.md
-5. /Users/parikshit/Documents/code/job/skills/linkedin/SKILL.md
-6. /Users/parikshit/Documents/code/job/skills/generic-apply/SKILL.md
+1. <repo-root>/CLAUDE.md
+2. <repo-root>/profile.md
+3. <repo-root>/skills/instahyre/SKILL.md
+4. <repo-root>/skills/naukri/SKILL.md
+5. <repo-root>/skills/linkedin/SKILL.md
+6. <repo-root>/skills/generic-apply/SKILL.md
 
 Do NOT rely on profile facts in this prompt. Source all answers from profile.md.
 
@@ -40,7 +40,7 @@ Autonomous. Apply directly. No confirmations. Log assumptions.
 
 ## Duplicate check (do this once, before applying)
 ```bash
-cd /Users/parikshit/Documents/code/job && python3 scripts/db_batch_insert.py --summary
+cd <repo-root> && python3 scripts/db_batch_insert.py --summary
 ```
 
 ## Run stages
@@ -67,7 +67,7 @@ LinkedIn: follow skills/linkedin/SKILL.md keyword matrix. Week filter (f_TPR=r60
 
 ### 4. RESUME
 ```bash
-cd /Users/parikshit/Documents/code/job && python3 scripts/pick_resume.py "<title + skills + JD>"
+cd <repo-root> && python3 scripts/pick_resume.py "<title + skills + JD>"
 ```
 REUSE → use cached PDF. TUNE → tune at most 3 per run, otherwise use fallback.
 Instahyre: no resume upload needed.
@@ -130,20 +130,20 @@ After logging, reflect on this run and rewrite the skill files to reduce tool ca
 Be concrete and surgical. Add exact JS snippets, exact ref patterns, exact button labels observed. Remove instructions that turned out to be wrong.
 
 Files to update as needed:
-- `/Users/parikshit/Documents/code/job/skills/instahyre/SKILL.md`
-- `/Users/parikshit/Documents/code/job/skills/naukri/SKILL.md`
-- `/Users/parikshit/Documents/code/job/skills/linkedin/SKILL.md`
-- `/Users/parikshit/Documents/code/job/skills/generic-apply/SKILL.md`
-- `/Users/parikshit/Documents/code/job/CLAUDE.md` (efficiency rules section only)
+- `<repo-root>/skills/instahyre/SKILL.md`
+- `<repo-root>/skills/naukri/SKILL.md`
+- `<repo-root>/skills/linkedin/SKILL.md`
+- `<repo-root>/skills/generic-apply/SKILL.md`
+- `<repo-root>/CLAUDE.md` (efficiency rules section only)
 
 After editing skill files, append a one-line entry:
 ```bash
-echo "YYYY-MM-DD: <what changed and why>" >> /Users/parikshit/Documents/code/job/data/optimize-log.md
+echo "YYYY-MM-DD: <what changed and why>" >> <repo-root>/data/optimize-log.md
 ```
 
 After editing, git push:
 ```bash
-cd /Users/parikshit/Documents/code/job && git add -A && git commit -m "nightly: auto-optimize skills [YYYY-MM-DD]" && git push
+cd <repo-root> && git add -A && git commit -m "nightly: auto-optimize skills [YYYY-MM-DD]" && git push
 ```
 
 ## Final report format

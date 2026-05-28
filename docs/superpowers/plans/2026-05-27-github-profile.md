@@ -45,8 +45,8 @@ Create `github-profile/i-am-pluto/README.md` with:
 
 <p align="center">
   <a href="https://github.com/i-am-pluto?tab=repositories"><img src="https://img.shields.io/badge/orbit-public%20repos-8A2BE2?style=flat-square" alt="public repos"></a>
-  <a href="https://www.linkedin.com/in/parikshit-dabas"><img src="https://img.shields.io/badge/channel-linkedin-0A66C2?style=flat-square&logo=linkedin&logoColor=white" alt="LinkedIn"></a>
-  <a href="mailto:parikshit.p2002@gmail.com"><img src="https://img.shields.io/badge/ping-email-EA4335?style=flat-square&logo=gmail&logoColor=white" alt="Email"></a>
+  <a href="https://www.linkedin.com/in/user-profile"><img src="https://img.shields.io/badge/channel-linkedin-0A66C2?style=flat-square&logo=linkedin&logoColor=white" alt="LinkedIn"></a>
+  <a href="mailto:user@example.com"><img src="https://img.shields.io/badge/ping-email-EA4335?style=flat-square&logo=gmail&logoColor=white" alt="Email"></a>
 </p>
 
 ---
@@ -99,9 +99,9 @@ experiments    Python · TypeScript · JavaScript · C/C++ · TensorFlow · Open
 
 ### open channels
 
-- LinkedIn: [linkedin.com/in/parikshit-dabas](https://www.linkedin.com/in/parikshit-dabas)
+- LinkedIn: [linkedin.com/in/user-profile](https://www.linkedin.com/in/user-profile)
 - GitHub: [github.com/i-am-pluto](https://github.com/i-am-pluto)
-- Email: [parikshit.p2002@gmail.com](mailto:parikshit.p2002@gmail.com)
+- Email: [user@example.com](mailto:user@example.com)
 ```
 
 - [ ] **Step 3: Inspect README rendering-sensitive syntax**
@@ -173,7 +173,7 @@ github-profile/i-am-pluto/README.md
 Run:
 
 ```bash
-rg -n "TODO|TBD|github.com/i-am-pluto|linkedin.com/in/parikshit-dabas|mailto:" github-profile/i-am-pluto
+rg -n "TODO|TBD|github.com/i-am-pluto|linkedin.com/in/user-profile|mailto:" github-profile/i-am-pluto
 ```
 
 Expected: no `TODO` or `TBD`; expected profile, repo, LinkedIn, and email links appear.

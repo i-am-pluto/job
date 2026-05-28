@@ -2,7 +2,7 @@
 
 ## Goal
 
-Convert this repository into an in-repo Claude Code plugin for Parikshit's job-search system. The plugin should let Claude start the workflow through a command trigger, and it should be suitable for an external scheduler to invoke later.
+Convert this repository into an in-repo Claude Code plugin for the user's job-search system. The plugin should let Claude start the workflow through a command trigger, and it should be suitable for an external scheduler to invoke later.
 
 The current markdown profile, resume files, skills, scripts, and database remain the source of truth. The plugin layer adds orchestration through commands and Claude subagents.
 
