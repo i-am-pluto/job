@@ -1,0 +1,31 @@
+{
+  "name": "job-search-marketplace",
+  "description": "Marketplace for Parikshit's automated job-search plugin.",
+  "owner": {
+    "name": "i-am-pluto",
+    "url": "https://github.com/i-am-pluto"
+  },
+  "plugins": [
+    {
+      "name": "job-search",
+      "source": "./",
+      "description": "Automated job application system for Instahyre, LinkedIn, Naukri, and external ATS workflows.",
+      "version": "1.0.0",
+      "author": {
+        "name": "i-am-pluto",
+        "url": "https://github.com/i-am-pluto/job"
+      },
+      "repository": "https://github.com/i-am-pluto/job",
+      "license": "UNLICENSED",
+      "keywords": [
+        "jobs",
+        "applications",
+        "resume",
+        "linkedin",
+        "naukri",
+        "instahyre",
+        "ats"
+      ]
+    }
+  ]
+}
