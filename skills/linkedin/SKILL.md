@@ -1,7 +1,7 @@
 ---
 name: linkedin
 description: This skill should be used when discovering LinkedIn jobs, handling LinkedIn Easy Apply, following LinkedIn external Apply links, or saving LinkedIn leads to the pipeline.
-version: 1.1.0
+version: 1.1.1
 ---
 
 # LinkedIn Job Application Skill
@@ -9,8 +9,19 @@ version: 1.1.0
 Apply to backend jobs with a strong preference for the company's own careers/ATS site by invoking skill `job-search:generic-apply` via the Skill tool. LinkedIn is primarily a discovery source; Easy Apply is fallback when no company-site path is available. Both external and Easy Apply submissions count toward target.
 
 **Trigger:** "apply on LinkedIn", "find LinkedIn jobs", "search LinkedIn for [role]", or a LinkedIn jobs URL.
-**Target:** 15+ submitted applications per run, prioritizing external company-site submissions.
+**Target:** 5-10 submitted fallback applications per nightly run, only after Naukri and Instahyre finish or stop with budget remaining.
 **Mode:** Interactive → stop before submit and confirm. Nightly (`nightly-job-apply`) → submit autonomously.
+
+## Agent budget
+
+LinkedIn is the fallback APPLY agent. Do not run it in parallel with Naukri or Instahyre.
+
+- Budget: 25 tool calls / 15k tokens max.
+- Stop at 10 successful submitted applications, or earlier if the controller passes a smaller remaining budget.
+- Prefer Easy Apply. Use external/company-site flows only when the path is already obvious and simple.
+- Save complex external ATS, login, CAPTCHA, Workday, password, or multi-page flows to `data/pipeline.md` instead of spending the session.
+- Flush DB after every 3-4 successful applications. If the budget or session limit stops the run, flush any unflushed applications before returning.
+- If any tool reports `You've hit your session limit`, stop immediately after flushing. Do not retry and do not continue to another job.
 
 ---
 
@@ -151,9 +162,9 @@ Array.from(document.querySelectorAll('[aria-modal],[class*="artdeco-modal"],[cla
 
 ---
 
-## Phase 4 — DB write (once, after all jobs)
+## Phase 4 — DB write (batched during the run)
 
-Accumulate all applied jobs in memory. After finishing the full run:
+Accumulate applied jobs in memory. Flush every 3-4 successful applications:
 ```bash
 python3 scripts/db_batch_insert.py --apps '[
   {"company":"X","role":"Y","platform":"linkedin","score":4,"location":"L","notes":"Easy Apply"},
@@ -161,7 +172,7 @@ python3 scripts/db_batch_insert.py --apps '[
 ]'
 ```
 
-**Do not write per-job.** Batch at the end. The DB helpers use a safe temp-copy + lock strategy for mounted SQLite reliability; never open `data/applications.db` directly or retry individual rows after a SQLite error. `db_batch_insert.py --apps` also writes initial `status_history` rows.
+**Do not write per-job.** After each flush, clear the in-memory batch and continue. Always flush any remaining unflushed applications before returning, especially when budget/session limits stop the agent. The DB helpers use a safe temp-copy + lock strategy for mounted SQLite reliability; never open `data/applications.db` directly or retry individual rows after a SQLite error. `db_batch_insert.py --apps` also writes initial `status_history` rows.
 
 ---
 

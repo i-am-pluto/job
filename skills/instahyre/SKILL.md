@@ -1,7 +1,7 @@
 ---
 name: instahyre
 description: This skill should be used when scanning Instahyre matching jobs, applying through Instahyre one-click apply, or finding company-site application paths from Instahyre opportunities.
-version: 1.1.0
+version: 1.1.1
 ---
 
 # Instahyre Job Application Skill
@@ -28,6 +28,17 @@ Login/account blockers on the external site are handled by `generic-apply`: firs
 
 ## When this skill triggers
 User says anything like: "apply to Instahyre jobs", "find me jobs on Instahyre", "scan Instahyre", "apply to matching jobs", or pastes the Instahyre opportunities URL.
+
+## Agent budget
+
+Instahyre is second priority after Naukri in the nightly workflow.
+
+- Budget: 35 tool calls / 18k tokens max.
+- The controller must pass the remaining Instahyre quota from the live DB/run state. If remaining quota is 0, skip this agent entirely.
+- Stop at 15 successful submitted applications or the passed remaining quota, whichever is lower.
+- Prefer Instahyre one-click apply when no obvious external company-site path is visible. Do not spend the run searching broadly for external routes.
+- Flush DB after every 3-4 successful applications. If the budget or session limit stops the run, flush any unflushed applications before returning.
+- If any tool reports `You've hit your session limit`, stop immediately after flushing. Do not retry and do not continue to another card.
 
 ## Prerequisites
 - The user must be logged into Instahyre in Chrome
@@ -117,13 +128,15 @@ Before clicking Instahyre **Apply**, inspect the visible modal/JD for a company-
 
 6. **The Instahyre list shows 30 cards per page.** After exhausting visible cards, check for a "Next" pagination button.
 
-### Step 5 — Track (batched, once at the end)
+### Step 5 — Track (batched during the run)
 
-Do NOT call db.py per job. Keep an in-memory list. At the end, write all at once using:
+Do NOT call db.py per job. Keep an in-memory list and flush every 3-4 successful applications using:
 
 ```bash
 python3 scripts/db_batch_insert.py --apps '[{"company":"X","role":"Y","platform":"instahyre","score":4,"status":"Applied","location":"Bangalore","notes":"..."}]'
 ```
+
+After each flush, clear the in-memory batch and continue. Always flush any remaining unflushed applications before returning, especially when budget/session limits stop the agent.
 
 The DB helpers use a safe temp-copy + lock strategy for mounted SQLite reliability. Never open `data/applications.db` directly, never write one row at a time after each apply, and never retry individual rows after a SQLite error. `db_batch_insert.py --apps` also writes initial `status_history` rows.
 

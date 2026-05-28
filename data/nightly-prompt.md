@@ -2,7 +2,7 @@
 
 > Source of truth for the `nightly-job-apply` scheduled task prompt.
 > Update this file first, then sync to the scheduled task.
-> Last updated: 2026-05-27
+> Last updated: 2026-05-28
 
 ---
 
@@ -37,6 +37,26 @@ Autonomous. Apply directly. No confirmations. Log assumptions.
 - Instahyre: after clicking Cancel on "similar jobs" popup, the main modal closes — click View » on next card manually.
 - Naukri: Apply button requires coordinate click (find() ref click does NOT fire). Screenshot first, then click.
 - Naukri: Use `-in-india` URL suffix (e.g. backend-developer-jobs-in-india?experience=0,3&jobAge=7) — without it the experience filter is ignored.
+
+## Organization budget contract
+
+The CEO is the controller. It assigns each agent a bounded task and waits for completion before launching the next apply agent. Do not run platform APPLY agents in parallel.
+
+| Agent | Budget | Output |
+| --- | --- | --- |
+| CEO preflight | 6 tool calls / 8k tokens max | remaining quotas, duplicate list, carry-over actions |
+| Gmail/status | 10 tool calls / 8k tokens max | clear status updates only; no long analysis |
+| Resume strategy | 3 tool calls / 4k tokens max | reuse/tune decision; prefer cached PDFs |
+| Naukri apply | 45 tool calls / 25k tokens max | up to 15 submitted apps, batched DB flushes |
+| Instahyre apply | 35 tool calls / 18k tokens max | up to remaining Instahyre cap, batched DB flushes |
+| LinkedIn apply | 25 tool calls / 15k tokens max | fallback only after Naukri + Instahyre; stop at first complex external flow |
+| Final log | 4 tool calls / 4k tokens max | compact run summary from agent outputs |
+
+Hard stops:
+- If any tool or agent reports `You've hit your session limit`, stop the whole run immediately. Flush any already-applied jobs, write a compact note, and do not invoke CEO log mode or retry agents.
+- If an agent reaches its budget before hitting quota, it returns partial results and stops. The controller may move to the next priority platform only if session budget remains.
+- Do not retry Cloudflare/server errors while another platform is still running. Queue the URL to `data/pipeline.md` and continue.
+- Do not launch "send updated dup list" agents. Running agents cannot be corrected mid-flight; all duplicate and quota data must be collected before launching each platform agent.
 
 ## Duplicate check (do this once, before applying)
 ```bash
@@ -74,35 +94,44 @@ Instahyre: no resume upload needed.
 
 ### 5. APPLY
 
+Run APPLY stages sequentially in priority order: **Naukri → Instahyre → LinkedIn fallback**.
+
+Before each platform, compute remaining quota from the live DB and today's run state. Target counts are caps, not obligations:
+- Naukri cap: 15 submitted applications.
+- Instahyre cap: 15 submitted applications, but skip Instahyre if today's DB/run state already has 15+ Instahyre applications.
+- LinkedIn cap: 5-10 fallback applications only if Naukri + Instahyre did not exhaust the session budget.
+
 **DB flush rule: after every 3-4 applications, immediately write them to DB:**
 ```bash
 python3 scripts/db_batch_insert.py --apps '[{...}]'
 ```
 Do NOT wait until the end to write. Flush every 3-4, then keep a fresh in-memory list for the next batch. This prevents data loss if the session ends early.
 
-**Stage A — Instahyre target: ~15 applications**
+**Stage A — Naukri target: up to 15 applications**
+Follow skills/naukri/SKILL.md exactly:
+- JS card scan using keyword matrix with -in-india URLs
+- Per-job loop — JS to check apply type, screenshot before clicking Apply
+- Direct apply (Path A): screenshot → coordinate click → check for success redirect or questionnaire
+- External apply (Path B): only for strong matches; skip quickly on login/CAPTCHA/password walls
+- Flush DB every 3-4 Naukri applications
+- Stop at 15 successful submissions or budget limit, whichever comes first
+
+**Stage B — Instahyre target: remaining cap up to 15 applications**
 Follow skills/instahyre/SKILL.md exactly:
 - Use JavaScript to check modal state (not get_page_text)
 - Dismiss "similar jobs" popup with Cancel → then click View » on next card manually
 - Dismiss "actively looking" popup with Cancel (check JS visibility first)
 - Apply to all backend/fullstack (score >= 4)
 - Flush DB every 3-4 Instahyre applications
+- Stop at 15 successful submissions or budget limit, whichever comes first
 
-**Stage B — Naukri target: ~15 applications**
-Follow skills/naukri/SKILL.md exactly:
-- Phase 0: profile boost (re-save headline on https://www.naukri.com/mnjuser/profile)
-- Phase 1: JS card scan using keyword matrix with -in-india URLs
-- Phase 2: per-job loop — JS to check apply type, screenshot before clicking Apply
-- Direct apply (Path A): screenshot → coordinate click → check for success redirect or questionnaire
-- External apply (Path B): screenshot → coordinate click → new tab → generic-apply skill
-- Flush DB every 3-4 Naukri applications
-
-**Stage C — LinkedIn target: 15+ applications**
+**Stage C — LinkedIn fallback target: 5-10 applications only if budget remains**
 Follow skills/linkedin/SKILL.md:
 - Easy Apply → fill modal → submit. For screening questions use find() by label text, not DOM input selectors.
-- External Apply → follow to ATS → apply via skills/generic-apply/SKILL.md → submit autonomously.
+- External Apply → follow to ATS only if it is simple; save complex flows to data/pipeline.md instead of spending the session.
 - Save blocked URLs to data/pipeline.md.
 - Flush DB every 3-4 LinkedIn applications
+- Stop at budget limit, first complex external flow, or session-limit warning.
 
 ### 6. LOG
 Final flush of any remaining unflushed applications:

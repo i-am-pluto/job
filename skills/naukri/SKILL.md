@@ -1,16 +1,26 @@
 ---
 name: naukri
-description: This skill should be used when scanning Naukri jobs, boosting the Naukri profile, applying directly on Naukri, or handling Naukri company-site redirects.
-version: 1.1.0
+description: This skill should be used when scanning Naukri jobs, applying directly on Naukri, or handling Naukri company-site redirects.
+version: 1.1.1
 ---
 
 # Naukri Job Application Skill
 
-Apply to backend/SDE jobs on Naukri.com. Prefers direct Naukri apply (one-click); for "Apply on company site" jobs, invokes skill `job-search:generic-apply` via the Skill tool. Includes a daily profile boost routine.
+Apply to backend/SDE jobs on Naukri.com. Prefers direct Naukri apply (one-click); for "Apply on company site" jobs, invokes skill `job-search:generic-apply` via the Skill tool only when the external flow is simple enough to fit the run budget.
 
 **Trigger:** "apply on Naukri", "find Naukri jobs", "scan Naukri", "naukri run", or a Naukri jobs/search URL.
-**Target:** 15+ submitted applications per run.
+**Target:** Up to 15 submitted applications per run.
 **Mode:** Interactive → stop before submit and confirm. Nightly (`nightly-job-apply`) → submit autonomously.
+
+## Agent budget
+
+Naukri is the first-priority APPLY agent.
+
+- Budget: 45 tool calls / 25k tokens max.
+- Stop at 15 successful submitted applications, even if more matching jobs are available.
+- Prefer direct Naukri apply. For external company-site flows, skip quickly if login/CAPTCHA/password/manual account creation appears.
+- Flush DB after every 3-4 successful applications. If the budget or session limit stops the run, flush any unflushed applications before returning.
+- If any tool reports `You've hit your session limit`, stop immediately after flushing. Do not retry and do not continue to another job.
 
 ---
 
@@ -28,21 +38,6 @@ Read `profile.md` and `resumes/base.md` once. Then use the profile values inline
 | Willing to relocate | Read from `profile.md` |
 
 **Scoring rule:** ALL backend and fullstack roles score ≥ 4 regardless of language stack. Skip only: hard 5+ yr minimum stated in the JD, frontend-only, mobile-only, pure DevOps/QA, or "No longer accepting applications".
-
----
-
-## Phase 0 — Profile Boost (run ONCE at the start of every session)
-
-Naukri's algorithm ranks profiles higher when updated recently. Re-saving the headline is enough to reset the "updated today" timestamp.
-
-```
-1. Navigate to https://www.naukri.com/mnjuser/profile
-2. Click pencil icon next to Resume headline → re-save same text → Save
-```
-
-> **Resume upload is manual** — do it yourself from the profile page whenever you want to re-upload. The `file_upload` tool cannot reach local files outside session uploads.
-
-This re-timestamps the profile as "updated today" and pushes it higher in recruiter searches. Takes ~10 seconds.
 
 ---
 
@@ -197,9 +192,9 @@ If external site requires login: try Google login with the email from `profile.m
 
 ---
 
-## Phase 4 — DB write (batched, once at the end)
+## Phase 4 — DB write (batched during the run)
 
-Accumulate all applied jobs in memory during the run. Write once at the end:
+Accumulate applied jobs in memory during the run. Flush every 3-4 successful applications:
 
 ```bash
 python3 scripts/db_batch_insert.py --apps '[
@@ -209,6 +204,8 @@ python3 scripts/db_batch_insert.py --apps '[
 ```
 
 Use `"platform":"naukri"` for direct applies and `"naukri-external"` for company-site redirects.
+
+After each flush, clear the in-memory batch and continue. Always flush any remaining unflushed applications before returning, especially when budget/session limits stop the agent.
 
 The DB helpers use a safe temp-copy + lock strategy for mounted SQLite reliability. Never open `data/applications.db` directly, never write one row at a time after each apply, and never retry individual rows after a SQLite error. `db_batch_insert.py --apps` also writes initial `status_history` rows.
 
@@ -275,4 +272,3 @@ The DB helpers use a safe temp-copy + lock strategy for mounted SQLite reliabili
 7. **Job links open in a new tab** by default — always use `tabs_context_mcp` after clicking to find the correct tab ID.
 8. **"Apply on company site" jobs** are marked with a globe icon 🌐 in search results — can pre-identify before opening JD.
 9. **Naukri limits to 50 applications per day.** Stop and log remaining to `data/pipeline.md` once limit approached.
-10. **Profile update timestamp** — re-saving the headline resets it to "Today", improving recruiter search ranking. Resume re-upload is manual.
