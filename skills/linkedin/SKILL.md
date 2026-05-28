@@ -6,7 +6,7 @@ version: 1.0.0
 
 # LinkedIn Job Application Skill
 
-Apply to backend jobs with a strong preference for the company's own careers/ATS site via `skills/generic-apply/SKILL.md`. LinkedIn is primarily a discovery source; Easy Apply is fallback when no company-site path is available. Both external and Easy Apply submissions count toward target.
+Apply to backend jobs with a strong preference for the company's own careers/ATS site by invoking skill `job-search:generic-apply` via the Skill tool. LinkedIn is primarily a discovery source; Easy Apply is fallback when no company-site path is available. Both external and Easy Apply submissions count toward target.
 
 **Trigger:** "apply on LinkedIn", "find LinkedIn jobs", "search LinkedIn for [role]", or a LinkedIn jobs URL.
 **Target:** 15+ submitted applications per run, prioritizing external company-site submissions.
@@ -65,7 +65,7 @@ For each job in queue, execute one `browser_batch` to open + read:
 
 From the JD text: confirm no hard 5+ yr minimum, confirm not frontend/mobile. If skip → dismiss card, next.
 
-**External-first rule:** For every qualifying company, prefer applying on the company's own careers page or ATS through `skills/generic-apply/SKILL.md`. Good companies usually host jobs on their own careers sites, Greenhouse, Lever, Ashby, SmartRecruiters, Workable, or similar. If LinkedIn shows an external **Apply** button, use that path before Easy Apply. If LinkedIn only shows Easy Apply but the company is strong, first check the JD/company site for a direct careers URL when it can be found without a long search; if found, hand off to `generic-apply`. Use Easy Apply only when no reliable external/company-site path is available or the external path is blocked.
+**External-first rule:** For every qualifying company, prefer applying on the company's own careers page or ATS by invoking skill `job-search:generic-apply` via the Skill tool. Good companies usually host jobs on their own careers sites, Greenhouse, Lever, Ashby, SmartRecruiters, Workable, or similar. If LinkedIn shows an external **Apply** button, use that path before Easy Apply. If LinkedIn only shows Easy Apply but the company is strong, first check the JD/company site for a direct careers URL when it can be found without a long search; if found, invoke generic-apply skill. Use Easy Apply only when no reliable external/company-site path is available or the external path is blocked.
 
 Pick resume once per job: `python3 scripts/pick_resume.py "<job title + top 3 skills from JD>"` → note the PDF path. Then apply via the correct path:
 
@@ -77,7 +77,7 @@ Pick resume once per job: `python3 scripts/pick_resume.py "<job title + top 3 sk
 browser_batch: [click "Apply" button] → [wait 3s] → [get_page_text on new tab]
 ```
 
-Switch to the new tab. Hand off to `skills/generic-apply/SKILL.md`. That skill handles company careers sites, ATS forms, Google login, account creation, form-filling, and submit.
+Switch to the new tab. Invoke skill `job-search:generic-apply` via the Skill tool. That skill handles company careers sites, ATS forms, Google login, account creation, form-filling, and submit.
 
 If a login/account wall blocks the company-site application, follow `generic-apply`:
 - First try Google login with the email from `profile.md`.

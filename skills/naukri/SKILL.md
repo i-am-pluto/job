@@ -6,7 +6,7 @@ version: 1.0.0
 
 # Naukri Job Application Skill
 
-Apply to backend/SDE jobs on Naukri.com. Prefers direct Naukri apply (one-click); for "Apply on company site" jobs, hands off to `skills/generic-apply/SKILL.md`. Includes a daily profile boost routine.
+Apply to backend/SDE jobs on Naukri.com. Prefers direct Naukri apply (one-click); for "Apply on company site" jobs, invokes skill `job-search:generic-apply` via the Skill tool. Includes a daily profile boost routine.
 
 **Trigger:** "apply on Naukri", "find Naukri jobs", "scan Naukri", "naukri run", or a Naukri jobs/search URL.
 **Target:** 15+ submitted applications per run.
@@ -183,7 +183,7 @@ Use `find(label text)` to locate each field, then `form_input` or `triple_click 
 2. computer.left_click(coordinate=[x, y])
 3. wait 3s → tabs_context_mcp to find new tab
 4. Switch to new tab → get_page_text
-5. Hand off to skills/generic-apply/SKILL.md
+5. Invoke skill `job-search:generic-apply` via the Skill tool
 ```
 
 If external site requires login: try Google login with the email from `profile.md` first. If Google unavailable but email sign-up exists, sign up with the email from `profile.md`. Never enter a password manually. Skip/save to `data/pipeline.md` if CAPTCHA or password wall appears.

@@ -6,7 +6,7 @@ version: 1.0.0
 
 # Instahyre Job Application Skill
 
-Use Instahyre as a job-discovery source, then prefer applying on the company's own careers/ATS site through `skills/generic-apply/SKILL.md`. Instahyre one-click apply is fallback when no reliable external company-site application path is available or when the company-site path is blocked.
+Use Instahyre as a job-discovery source, then prefer applying on the company's own careers/ATS site by invoking skill `job-search:generic-apply` via the Skill tool. Instahyre one-click apply is fallback when no reliable external company-site application path is available or when the company-site path is blocked.
 
 ## How Instahyre apply works (observed from live testing)
 1. Navigate to `https://www.instahyre.com/candidate/opportunities/?matching=true`
@@ -20,7 +20,7 @@ Use Instahyre as a job-discovery source, then prefer applying on the company's o
 ## Company-site preference
 
 For every strong match, first try to locate and use the company's direct application flow:
-- If the modal/JD includes an "Apply on company website", careers URL, ATS link, or external apply link, open it and hand off to `skills/generic-apply/SKILL.md`.
+- If the modal/JD includes an "Apply on company website", careers URL, ATS link, or external apply link, open it and invoke skill `job-search:generic-apply` via the Skill tool.
 - If no direct link is visible but the company is high quality, briefly check the company website/careers page when it can be found without derailing the run.
 - Use Instahyre's one-click **Apply** only after the company-site route is unavailable, unreliable, or blocked.
 
@@ -81,7 +81,7 @@ From the `read_page` output, score ALL cards 1-5 before opening any modal. Build
 
 ### Step 4 — Apply loop using JavaScript modal inspection
 
-Before clicking Instahyre **Apply**, inspect the visible modal/JD for a company-site, careers, ATS, or external application link. If present, open it in a new tab and hand off to `skills/generic-apply/SKILL.md`. If no external path is available or it is blocked under the skip rules in `generic-apply`, return to the Instahyre modal and use the one-click flow below.
+Before clicking Instahyre **Apply**, inspect the visible modal/JD for a company-site, careers, ATS, or external application link. If present, open it in a new tab and invoke skill `job-search:generic-apply` via the Skill tool. If no external path is available or it is blocked under the generic-apply skip rules, return to the Instahyre modal and use the one-click flow below.
 
 **CRITICAL LEARNINGS from live runs:**
 

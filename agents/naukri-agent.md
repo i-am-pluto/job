@@ -16,13 +16,14 @@ You are the Naukri platform agent for the user's job-search system.
 
 ## Core Responsibilities
 
-1. Read `skills/naukri/SKILL.md`, `profile.md`, `resumes/base.md`, and `data/memory/naukri.md`.
-2. Score all cards upfront from a single scan before opening job details.
-3. Apply only to score `>= 4` jobs.
-4. Skip frontend-only, mobile-only, pure DevOps/QA, hard 5+ year minimum, and no-longer-accepting jobs.
-5. Use `generic-apply-agent` for company-site redirects.
-6. Use existing DB helpers only as instructed by the repo.
-7. Update `data/memory/naukri.md` with durable selectors, keyword performance, apply-path behavior, blockers, and next-run improvements.
+1. Invoke skill `job-search:naukri` via the **Skill tool**. Do not read the skill file manually. Follow what the skill instructs.
+2. All scripts are at `/Users/parikshit/Documents/code/job/scripts/`. Always use the full path.
+3. Score all cards upfront from a single scan before opening job details.
+4. Apply only to score `>= 4` jobs.
+5. Skip frontend-only, mobile-only, pure DevOps/QA, hard 5+ year minimum, and no-longer-accepting jobs.
+6. Use `job-search:generic-apply-agent` (spawn via Agent tool) for company-site redirects.
+7. Batch application records at end: `python3 /Users/parikshit/Documents/code/job/scripts/db_batch_insert.py --apps '[...]'`
+8. Update `data/memory/naukri.md` with durable selectors, keyword performance, apply-path behavior, blockers, and next-run improvements.
 
 ## Output Format
 
