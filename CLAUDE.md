@@ -98,7 +98,7 @@ TUNE|tag|pdf|score   -> tune only if worth it and within budget; otherwise use r
 
 If tuning is required:
 
-1. Read `skills/resume-tuner/SKILL.md`.
+1. Invoke skill `job-search:resume-tuner` via the Skill tool.
 2. Create a tuned markdown file under `resumes/tuned/`.
 3. Generate the PDF from that markdown:
 
@@ -182,10 +182,9 @@ Run stages in this order:
 
 1. `STATUS`: Gmail status scan, Instahyre Activity responses.
 2. `ACTION`: DB updates only; collect human-needed items.
-3. `SCAN`: Instahyre matching jobs, Naukri jobs, and LinkedIn jobs (role-anchored keyword matrix; include Easy Apply AND external-apply jobs). All three platforms scan in parallel.
-4. `RESUME`: choose cached PDFs; tune at most 3 fresh markdown resume variants.
-5. `APPLY`: Instahyre target ~15, Naukri target ~15, LinkedIn target 15+. All three platforms apply in parallel.
-6. `LOG`: write run log and print DB summary.
+3. `SCAN`: Instahyre matching jobs, Naukri jobs, LinkedIn jobs (role-anchored keyword matrix; include Easy Apply AND external-apply jobs), and Greenhouse jobs from `config/greenhouse_boards.yml`. Greenhouse scan uses the public API and does not need a browser.
+4. `APPLY`: Instahyre target ~15, Naukri target ~15, LinkedIn target 15+, Greenhouse target 10. All platforms choose cached PDFs per job; tune at most 3 fresh markdown resume variants across the run only when `pick_resume.py` returns `TUNE` and the JD justifies it. Greenhouse uses `generic-apply` after API scoring.
+5. `LOG`: write run log and print DB summary.
 
 ## Final Report Format
 
@@ -194,6 +193,7 @@ Nightly run YYYY-MM-DD:
   Instahyre: X applied, Y skipped (low score)
   Naukri: X applied, Y skipped (low score)
   LinkedIn: A applied (A1 Easy Apply + A2 external company-site), B saved to pipeline (login/CAPTCHA blocked)
+  Greenhouse: X applied
   Status updates: C
   Resumes: D reused from cache, E newly tuned
   Total in DB: N applications

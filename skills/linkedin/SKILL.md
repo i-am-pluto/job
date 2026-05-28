@@ -78,7 +78,11 @@ From the JD text: confirm no hard 5+ yr minimum, confirm not frontend/mobile. If
 
 **External-first rule:** For every qualifying company, prefer applying on the company's own careers page or ATS by invoking skill `job-search:generic-apply` via the Skill tool. Good companies usually host jobs on their own careers sites, Greenhouse, Lever, Ashby, SmartRecruiters, Workable, or similar. If LinkedIn shows an external **Apply** button, use that path before Easy Apply. If LinkedIn only shows Easy Apply but the company is strong, first check the JD/company site for a direct careers URL when it can be found without a long search; if found, invoke generic-apply skill. Use Easy Apply only when no reliable external/company-site path is available or the external path is blocked.
 
-Pick resume once per job: `python3 scripts/pick_resume.py "<job title + top 3 skills from JD>"` → note the PDF path. Then apply via the correct path:
+Pick resume once per job: `python3 scripts/pick_resume.py "<job title + top 3 skills from JD>"`.
+- `REUSE|tag|pdf|score` means use the returned cached PDF and do not tune.
+- `TUNE|tag|pdf|score` means invoke skill `job-search:resume-tuner` via the Skill tool only when the concrete JD justifies tuning and the run/user budget allows it; otherwise use the returned fallback PDF.
+
+Then apply via the correct path:
 
 ---
 

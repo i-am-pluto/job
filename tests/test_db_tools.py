@@ -144,6 +144,8 @@ class DbToolTests(unittest.TestCase):
             "3",
             "--linkedin",
             "2",
+            "--greenhouse",
+            "1",
             "--status-updates",
             "1",
             "--summary",
@@ -153,7 +155,7 @@ class DbToolTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         row = self.fetch_one(
             """
-            SELECT instahyre_applied, linkedin_applied, status_updates, summary
+            SELECT instahyre_applied, linkedin_applied, greenhouse_applied, status_updates, summary
             FROM run_log
             ORDER BY id DESC
             """
@@ -161,6 +163,7 @@ class DbToolTests(unittest.TestCase):
         self.assertEqual(dict(row), {
             "instahyre_applied": 3,
             "linkedin_applied": 2,
+            "greenhouse_applied": 1,
             "status_updates": 1,
             "summary": "nightly ok",
         })

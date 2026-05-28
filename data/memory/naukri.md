@@ -5,8 +5,9 @@ Keep durable Naukri selectors, keyword performance, apply path behavior, and blo
 ## Current Notes
 
 - Use `skills/naukri/SKILL.md` as the workflow authority.
-- Use `-in-india` URL suffixes with experience filters for searches.
-- Apply button behavior may require coordinate clicks from screenshots.
+- Primary workflow is `scripts/naukri_noperi_apply.py`, backed by vendored NopeRi APIs.
+- Browser search/apply is fallback only when API login, token, or apply calls fail.
+- In browser fallback, use `-in-india` URL suffixes with experience filters; Apply may require coordinate clicks from screenshots.
 
 ## Keyword Performance
 
@@ -18,4 +19,4 @@ Keep durable Naukri selectors, keyword performance, apply path behavior, and blo
 
 ## Durable Learnings
 
-- 2026-05-28: Memory initialized for plugin install. Replace with measured apply-path behavior after the next run.
+- 2026-05-28: Switched Naukri primary workflow to the NopeRi API adapter. Keep durable notes on API login/token failures, questionnaire misses, and external redirect rates after the next run.

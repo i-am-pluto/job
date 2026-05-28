@@ -67,11 +67,18 @@ def init():
             run_at          TEXT NOT NULL,
             instahyre_applied   INTEGER DEFAULT 0,
             linkedin_applied    INTEGER DEFAULT 0,
+            greenhouse_applied  INTEGER DEFAULT 0,
             status_updates      INTEGER DEFAULT 0,
             errors          TEXT,
             summary         TEXT
         )
     """)
+
+    try:
+        cur.execute("ALTER TABLE run_log ADD COLUMN greenhouse_applied INTEGER DEFAULT 0")
+    except sqlite3.OperationalError as exc:
+        if "duplicate column name" not in str(exc).lower():
+            raise
 
     con.commit()
     con.close()

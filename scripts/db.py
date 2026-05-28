@@ -6,7 +6,7 @@ Usage:
   python3 scripts/db.py update-status --company "Arcana" --role "SDE2 Backend" --platform instahyre --status Interview --source gmail --notes "Got interview invite"
   python3 scripts/db.py list   [--status Applied] [--platform instahyre]
   python3 scripts/db.py summary
-  python3 scripts/db.py log-run --instahyre 12 --linkedin 5 --status-updates 3 --summary "..."
+  python3 scripts/db.py log-run --instahyre 12 --linkedin 5 --greenhouse 2 --status-updates 3 --summary "..."
   python3 scripts/db.py log-gmail --message-id "abc123" --sender "no-reply@linkedin.com" --subject "..." --action status_updated
 """
 
@@ -107,16 +107,26 @@ def summary(args):
         print(f"  {r['platform']:<15}: {r['cnt']}")
     print(f"\nLast 7 days: {week['cnt']} applications")
 
+def ensure_run_log_greenhouse_column(cur):
+    cur.execute("PRAGMA table_info(run_log)")
+    columns = {row['name'] if hasattr(row, 'keys') else row[1] for row in cur.fetchall()}
+    if 'greenhouse_applied' not in columns:
+        cur.execute("ALTER TABLE run_log ADD COLUMN greenhouse_applied INTEGER DEFAULT 0")
+
 def log_run(args):
+    instahyre = getattr(args, 'instahyre', 0)
+    linkedin = getattr(args, 'linkedin', 0)
+    greenhouse = getattr(args, 'greenhouse', 0)
+    status_updates = getattr(args, 'status_updates', 0)
     with safe_connection(write=True) as con:
         cur = con.cursor()
+        ensure_run_log_greenhouse_column(cur)
         cur.execute("""
-            INSERT INTO run_log (run_at, instahyre_applied, linkedin_applied, status_updates, errors, summary)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (now(), getattr(args, 'instahyre', 0), getattr(args, 'linkedin', 0),
-              getattr(args, 'status_updates', 0), getattr(args, 'errors', None),
-              getattr(args, 'summary', None)))
-    print(f"✓ Run logged: Instahyre={args.instahyre}, LinkedIn={args.linkedin}, StatusUpdates={args.status_updates}")
+            INSERT INTO run_log (run_at, instahyre_applied, linkedin_applied, greenhouse_applied, status_updates, errors, summary)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (now(), instahyre, linkedin, greenhouse, status_updates,
+              getattr(args, 'errors', None), getattr(args, 'summary', None)))
+    print(f"✓ Run logged: Instahyre={instahyre}, LinkedIn={linkedin}, Greenhouse={greenhouse}, StatusUpdates={status_updates}")
 
 def log_gmail(args):
     try:
@@ -169,6 +179,7 @@ def main():
     p = sub.add_parser('log-run')
     p.add_argument('--instahyre', type=int, default=0)
     p.add_argument('--linkedin', type=int, default=0)
+    p.add_argument('--greenhouse', type=int, default=0)
     p.add_argument('--status-updates', type=int, default=0, dest='status_updates')
     p.add_argument('--errors')
     p.add_argument('--summary')

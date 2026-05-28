@@ -8,7 +8,7 @@ then copy back.
 
 Usage:
     python3 scripts/db_batch_insert.py --apps '[{"company":"X","role":"Y","platform":"instahyre","score":4,"status":"Applied","location":"Bangalore","notes":"..."}]'
-    python3 scripts/db_batch_insert.py --log-run --instahyre 12 --linkedin 5 --status-updates 3 --summary "..."
+    python3 scripts/db_batch_insert.py --log-run --instahyre 12 --linkedin 5 --greenhouse 2 --status-updates 3 --summary "..."
 
 Or import and call insert_applications(apps_list) directly.
 """
@@ -91,6 +91,7 @@ def insert_applications(apps: list[dict], dry_run: bool = False) -> dict:
 def log_run(
     instahyre: int = 0,
     linkedin: int = 0,
+    greenhouse: int = 0,
     status_updates: int = 0,
     errors: str = "",
     summary: str = "",
@@ -98,20 +99,25 @@ def log_run(
     """Write a run log entry."""
     with safe_connection(write=True) as conn:
         c = conn.cursor()
+        c.execute("PRAGMA table_info(run_log)")
+        columns = {row["name"] if hasattr(row, "keys") else row[1] for row in c.fetchall()}
+        if "greenhouse_applied" not in columns:
+            c.execute("ALTER TABLE run_log ADD COLUMN greenhouse_applied INTEGER DEFAULT 0")
         c.execute(
             """INSERT INTO run_log
-               (run_at, instahyre_applied, linkedin_applied, status_updates, errors, summary)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+               (run_at, instahyre_applied, linkedin_applied, greenhouse_applied, status_updates, errors, summary)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
                 datetime.now(timezone.utc).isoformat(),
                 instahyre,
                 linkedin,
+                greenhouse,
                 status_updates,
                 errors,
                 summary,
             ),
         )
-    print(f"Run logged: instahyre={instahyre} linkedin={linkedin} status_updates={status_updates}")
+    print(f"Run logged: instahyre={instahyre} linkedin={linkedin} greenhouse={greenhouse} status_updates={status_updates}")
 
 
 def main():
@@ -123,6 +129,7 @@ def main():
     parser.add_argument("--log-run", action="store_true", help="Write a run_log row")
     parser.add_argument("--instahyre", type=int, default=0)
     parser.add_argument("--linkedin", type=int, default=0)
+    parser.add_argument("--greenhouse", type=int, default=0)
     parser.add_argument("--status-updates", type=int, default=0, dest="status_updates")
     parser.add_argument("--errors", default="")
     args = parser.parse_args()
@@ -131,6 +138,7 @@ def main():
         log_run(
             instahyre=args.instahyre,
             linkedin=args.linkedin,
+            greenhouse=args.greenhouse,
             status_updates=args.status_updates,
             errors=args.errors,
             summary="" if args.summary is True or args.summary is None else args.summary,

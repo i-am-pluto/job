@@ -35,8 +35,8 @@ Autonomous. Apply directly. No confirmations. Log assumptions.
 - DB writes: use only `python3 scripts/db.py ...` and `python3 scripts/db_batch_insert.py ...`; they use safe temp-copy + locking for SQLite. Never open `data/applications.db` directly. Never `db.py add` per job.
 - `get_page_text` returns hidden DOM content — use JavaScript `el.offsetParent !== null` to check real visibility.
 - Instahyre: after clicking Cancel on "similar jobs" popup, the main modal closes — click View » on next card manually.
-- Naukri: Apply button requires coordinate click (find() ref click does NOT fire). Screenshot first, then click.
-- Naukri: Use `-in-india` URL suffix (e.g. backend-developer-jobs-in-india?experience=0,3&jobAge=7) — without it the experience filter is ignored.
+- Naukri: use the NopeRi API adapter first: `python3 scripts/naukri_noperi_apply.py --limit 15 --pages 1 --job-age 7`.
+- Naukri browser fallback only: if the adapter fails on login/token/API, use `-in-india` search URLs; browser Apply may require coordinate click.
 
 ## Organization budget contract
 
@@ -81,7 +81,7 @@ Collect recruiter replies, assessments, interview links, salary questions into "
 Instahyre: read_page(filter=all) on https://www.instahyre.com/candidate/opportunities/?matching=true
 Score all cards upfront. ALL backend/fullstack roles = 4. Skip only: frontend-only, mobile-only, pure DevOps, hard 5+ yr min.
 
-Naukri: follow skills/naukri/SKILL.md keyword matrix. Use `-in-india` suffix URLs with experience=0,3&jobAge=7. Run JS card extractor. Score all cards from title+exp before opening JDs.
+Naukri: primary scan is inside `scripts/naukri_noperi_apply.py` via the vendored NopeRi API client. Use browser `-in-india` URLs only as fallback if the adapter cannot proceed.
 
 LinkedIn: follow skills/linkedin/SKILL.md keyword matrix. Week filter (f_TPR=r604800), experience filter (f_E=2,3,4). Include Easy Apply AND external Apply jobs. Run keyword matrix until 15+ are queued.
 
@@ -109,11 +109,10 @@ Do NOT wait until the end to write. Flush every 3-4, then keep a fresh in-memory
 
 **Stage A — Naukri target: up to 15 applications**
 Follow skills/naukri/SKILL.md exactly:
-- JS card scan using keyword matrix with -in-india URLs
-- Per-job loop — JS to check apply type, screenshot before clicking Apply
-- Direct apply (Path A): screenshot → coordinate click → check for success redirect or questionnaire
-- External apply (Path B): only for strong matches; skip quickly on login/CAPTCHA/password walls
-- Flush DB every 3-4 Naukri applications
+- Primary path: `python3 scripts/naukri_noperi_apply.py --limit 15 --pages 1 --job-age 7`
+- The adapter scans, scores, skips duplicates, applies direct Naukri jobs, saves external jobs to pipeline, and flushes DB batches.
+- Browser fallback: use JS/card scan and coordinate click only if API login/token/apply fails and budget remains.
+- External apply: save to pipeline unless CEO explicitly assigns generic-apply budget.
 - Stop at 15 successful submissions or budget limit, whichever comes first
 
 **Stage B — Instahyre target: remaining cap up to 15 applications**

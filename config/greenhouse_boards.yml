@@ -1,0 +1,61 @@
+boards:
+  - company: Stripe
+    token: stripe
+    added_by: seed
+  - company: Airbnb
+    token: airbnb
+    added_by: seed
+  - company: Databricks
+    token: databricks
+    added_by: seed
+  - company: Chime
+    token: chime
+    added_by: seed
+  - company: Coinbase
+    token: coinbase
+    added_by: seed
+  - company: Discord
+    token: discord
+    added_by: seed
+  - company: Figma
+    token: figma
+    added_by: seed
+  - company: Grammarly
+    token: grammarly
+    added_by: seed
+  - company: Instacart
+    token: instacart
+    added_by: seed
+  - company: LaunchDarkly
+    token: launchdarkly
+    added_by: seed
+  - company: Lyft
+    token: lyft
+    added_by: seed
+  - company: Notion
+    token: notion
+    added_by: seed
+  - company: Plaid
+    token: plaid
+    added_by: seed
+  - company: Ramp
+    token: ramp
+    added_by: seed
+  - company: Rippling
+    token: rippling
+    added_by: seed
+  - company: Samsara
+    token: samsara
+    added_by: seed
+  - company: Segment
+    token: segment
+    added_by: seed
+  - company: Toast
+    token: toast
+    added_by: seed
+  - company: Vercel
+    token: vercel
+    added_by: seed
+  - company: Webflow
+    token: webflow
+    added_by: seed

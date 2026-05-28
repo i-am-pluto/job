@@ -26,6 +26,8 @@ For every strong match, first try to locate and use the company's direct applica
 
 Login/account blockers on the external site are handled by `generic-apply`: first try Google login with the email from the **Identity And Contact** section of `profile.md`; if Google login is unavailable but email sign-up exists, sign up with that same email. Never enter or invent a password manually.
 
+Instahyre one-click apply does not upload a resume. When handing a company-site or ATS application to `generic-apply`, that flow must choose the resume cache-first with `scripts/pick_resume.py`; tune through `job-search:resume-tuner` only if `pick_resume.py` returns `TUNE` and the concrete JD justifies spending the tuning budget.
+
 ## When this skill triggers
 User says anything like: "apply to Instahyre jobs", "find me jobs on Instahyre", "scan Instahyre", "apply to matching jobs", or pastes the Instahyre opportunities URL.
 

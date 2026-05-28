@@ -1,53 +1,72 @@
 ---
 name: naukri
-description: This skill should be used when scanning Naukri jobs, applying directly on Naukri, or handling Naukri company-site redirects.
-version: 1.1.1
+description: This skill should be used when scanning Naukri jobs, applying directly on Naukri through the NopeRi API adapter, or saving Naukri external company-site redirects.
+version: 2.0.0
 ---
 
 # Naukri Job Application Skill
 
-Apply to backend/SDE jobs on Naukri.com. Prefers direct Naukri apply (one-click); for "Apply on company site" jobs, invokes skill `job-search:generic-apply` via the Skill tool only when the external flow is simple enough to fit the run budget.
+Apply to backend/SDE jobs on Naukri through the local NopeRi adapter. The adapter wraps `vendor/NopeRi` but keeps this workspace's rules: `profile.md` for answers, `scripts/pick_resume.py` for resume choice, and `scripts/db_batch_insert.py` for tracking.
 
 **Trigger:** "apply on Naukri", "find Naukri jobs", "scan Naukri", "naukri run", or a Naukri jobs/search URL.
-**Target:** Up to 15 submitted applications per run.
-**Mode:** Interactive → stop before submit and confirm. Nightly (`nightly-job-apply`) → submit autonomously.
+**Target:** Up to 15 submitted direct Naukri applications per run.
+**Mode:** Interactive -> run `--no-apply` first and ask before live submit. Nightly (`nightly-job-apply`) -> submit autonomously within cap.
 
-## Agent budget
+## Primary API Workflow
 
-Naukri is the first-priority APPLY agent.
+Use the adapter first:
 
-- Budget: 45 tool calls / 25k tokens max.
-- Stop at 15 successful submitted applications, even if more matching jobs are available.
-- Prefer direct Naukri apply. For external company-site flows, skip quickly if login/CAPTCHA/password/manual account creation appears.
-- Flush DB after every 3-4 successful applications. If the budget or session limit stops the run, flush any unflushed applications before returning.
-- If any tool reports `You've hit your session limit`, stop immediately after flushing. Do not retry and do not continue to another job.
-
----
-
-## Profile (read once at start — do not re-read mid-run)
-
-Read `profile.md` and `resumes/base.md` once. Then use the profile values inline:
-
-| Field | Value |
-|---|---|
-| Current CTC | Read from `profile.md`; type the number only when required |
-| Expected CTC | Read from `profile.md`; type the number only when required |
-| Notice period | Read from `profile.md`; type days only when required |
-| Total experience | Read from `profile.md` Current Role |
-| Work authorization India | Read from `profile.md` |
-| Willing to relocate | Read from `profile.md` |
-
-**Scoring rule:** ALL backend and fullstack roles score ≥ 4 regardless of language stack. Skip only: hard 5+ yr minimum stated in the JD, frontend-only, mobile-only, pure DevOps/QA, or "No longer accepting applications".
-
----
-
-## Phase 1 — Bulk scan (ONE JS call, score all cards, no JD opens yet)
-
-### Search URLs — run keyword matrix in order until target met:
-
-**URL format (verified working):** `https://www.naukri.com/<role>-jobs-in-india?experience=0,3&jobAge=7`
-
+```bash
+python3 scripts/naukri_noperi_apply.py --dry-run --limit 15 --pages 1 --job-age 7
 ```
+
+Interactive live submit, only after user confirmation:
+
+```bash
+python3 scripts/naukri_noperi_apply.py --limit 15 --pages 1 --job-age 7
+```
+
+Nightly live submit:
+
+```bash
+python3 scripts/naukri_noperi_apply.py --limit 15 --pages 1 --job-age 7
+```
+
+Environment requirements:
+
+- `NAUKRI_USERNAME` and `NAUKRI_PASSWORD`, or fallback `USERNAME` and `PASSWORD`.
+- Dependencies from `vendor/NopeRi/requirements.txt` must be importable.
+- Do not put credentials in prompts, skill files, logs, or DB notes.
+
+The adapter must remain the source of truth for Naukri API execution. Do not run `vendor/NopeRi/apply_agent.py`; it uses upstream CSV tracking, hardcoded profile values, and a hardcoded AI scorer that do not match this workspace.
+
+## Rules Preserved By The Adapter
+
+- Check duplicates through `scripts/db.py list`; never use NopeRi's `applied_jobs.csv`.
+- Score with workspace policy: backend and fullstack roles score `4`; skip frontend-only, mobile-only, pure QA/DevOps, recruiter/data analyst roles, and hard 5+ year minimum roles.
+- Pick resumes with `scripts/pick_resume.py`.
+  - `REUSE|tag|pdf|score` means use the returned cached PDF and do not tune.
+  - `TUNE|tag|pdf|score` means invoke skill `job-search:resume-tuner` via the Skill tool only when the concrete JD justifies tuning and the run/user budget allows it; otherwise use the returned fallback PDF.
+- Apply only to direct Naukri jobs through NopeRi `NaukriJobClient.apply_job`.
+- Save external company-site jobs to `data/pipeline.md`; use `generic-apply` only if the controller explicitly allocates budget.
+- Answer questionnaires only when every required answer can be derived from `profile.md`; otherwise save the job to pipeline.
+- Flush successful applications through `scripts/db_batch_insert.py --apps`, every 3-4 applications and at the end.
+
+## Agent Budget
+
+- Naukri is the first-priority APPLY agent.
+- Budget: 45 tool calls / 25k tokens max.
+- Stop at 15 successful submitted applications.
+- If any tool reports `You've hit your session limit`, stop immediately after flushing.
+- If API login, `nkparam`, or Naukri API responses fail, stop the adapter path and use the browser fallback only if session budget remains.
+
+## Browser Fallback Only
+
+Use the browser flow only when the API adapter cannot proceed because of login/MFA, token, or API response issues.
+
+Fallback search URLs still need the `-in-india` suffix:
+
+```text
 https://www.naukri.com/backend-developer-jobs-in-india?experience=0,3&jobAge=7
 https://www.naukri.com/software-engineer-jobs-in-india?experience=0,3&jobAge=7
 https://www.naukri.com/software-development-engineer-jobs-in-india?experience=0,3&jobAge=7
@@ -57,218 +76,30 @@ https://www.naukri.com/platform-engineer-jobs-in-india?experience=0,3&jobAge=7
 https://www.naukri.com/distributed-systems-jobs-in-india?experience=0,3&jobAge=7
 ```
 
-> **Critical:** The `-in-india` suffix is required — without it Naukri ignores the `experience` filter and returns all seniority levels (verified 2026-05-27). Use `jobAge=7` (7 days); `jobAge=1` returns too few results, all senior.
+Fallback quirks:
 
-For custom keywords: `https://www.naukri.com/jobs?k=<keyword>&l=india&experience=0,3&jobAge=7`
+- Use JavaScript/text extraction for scanning; avoid screenshots except for final click coordinates.
+- Browser direct apply may require a coordinate click on the Apply button; this is not part of the primary API path.
+- Success is usually a full-page redirect to `/myapply/saveApply?...`.
+- Save external/CAPTCHA/password-wall jobs to `data/pipeline.md`.
 
-Pagination: append `&pageNo=2`, `&pageNo=3` etc. Each page has up to 20 cards.
+## Output Format
 
-### Extract all job cards in ONE JS call:
-
-```javascript
-const jobLinks = [...document.querySelectorAll('a')].filter(a =>
-  a.href && a.href.includes('job-listings') && a.textContent.trim().length > 5
-);
-window.__naukri_jobs = jobLinks;
-jobLinks.map((a, i) => {
-  let p = a.parentElement;
-  for (let n = 0; n < 10 && p; n++) {
-    if (p.innerText && p.innerText.length > 80 && p.innerText.length < 1500) break;
-    p = p.parentElement;
-  }
-  const lines = (p ? p.innerText : '').split('\n').map(s => s.trim()).filter(Boolean);
-  const expIdx = lines.findIndex(l => /\d+\s*-\s*\d+\s*Yr/i.test(l));
-  return i + ': "' + (lines[0] || '') + '" @ ' + (lines[1] || '') + ' | ' + (expIdx >= 0 ? lines[expIdx] : 'exp?');
-}).join('\n');
-```
-
-**Score all cards from title + company + experience range alone. Do not open any JD yet.** Build an ordered queue: APPLY (score ≥ 4) or SKIP (<4). Check `python3 scripts/db.py list` first and exclude companies already applied on Naukri.
-
-**Skip immediately if:**
-- Experience range starts at 8+ (e.g., "8-13 Yrs") — too senior
-- Role title is QA, DevOps, Frontend, Mobile, Data Analyst, Recruiter
-- Company already in DB for this role+platform
-
----
-
-## Phase 2 — Per-job apply loop
-
-Get the URL for a queued card:
-```javascript
-window.__naukri_jobs[<i>].href
-```
-
-Open in new tab and read JD:
-```
-tabs_create_mcp(url=<job URL>) → wait 3s → javascript_tool to check title/company/apply type
-```
-
-### Check apply type + JD via JS (one call):
-
-```javascript
-const applyBtn = [...document.querySelectorAll('button, a')].find(el => el.innerText && el.innerText.trim().match(/^apply/i));
-const title = document.querySelector('h1');
-const company = document.querySelector('.comp-name, [class*="comp-name"]');
-const jd = document.querySelector('.styles_job-desc-cnt__txljQ, .job-desc, [class*="job-desc"]');
-JSON.stringify({
-  title: title ? title.innerText.trim() : '?',
-  company: company ? company.innerText.split('\n')[0].trim() : '?',
-  applyBtnText: applyBtn ? applyBtn.innerText.trim() : 'not found',
-  jdSnippet: jd ? jd.innerText.slice(0, 400) : 'n/a'
-});
-```
-
-- `applyBtnText` = `"Apply on company site"` → **Path B** (external)
-- `applyBtnText` = `"Apply"` → **Path A** (direct Naukri)
-
-Confirm from JD: no hard "5+ years required", not frontend/mobile-only. If skip → close tab, next.
-
-Pick resume: `python3 scripts/pick_resume.py "<job title + top 3 skills>"` → note PDF path.
-
----
-
-### Path A — Direct Naukri Apply (preferred for speed)
-
-Direct Naukri apply submits your saved profile instantly. No form to fill in most cases.
-
-**CRITICAL: Use coordinate click — ref click does NOT trigger apply (verified 2026-05-27).**
-
-```
-1. screenshot → locate Apply button (typically top-right area of JD card)
-2. computer.left_click(coordinate=[x, y])
-3. wait 3s
-4. Check for success OR questionnaire
-```
-
-**Success pattern:** Page redirects to `/myapply/saveApply?...` showing:
-```
-✅ Applied to "[Role Title]"
-```
-Tab title becomes "Apply Confirmation". This is a full-page redirect — no toast.
-
-**Questionnaire check after clicking Apply:**
-```javascript
-const forms = [...document.querySelectorAll('form, [class*="question"], [class*="questionnaire"]')]
-  .filter(el => el.offsetParent !== null);
-forms.length > 0 ? forms[0].innerText.slice(0, 300) : 'no questionnaire';
-```
-
-If questionnaire present, fill per this table:
-
-| Question pattern | Answer |
-|---|---|
-| "Current CTC" / "Current Salary" | Current CTC from `profile.md` |
-| "Expected CTC" / "Expected Salary" | Expected CTC from `profile.md` |
-| "Notice Period" | Notice period from `profile.md` |
-| "Years of experience in [skill]" | Matching skill years from `profile.md` |
-| "Are you comfortable relocating?" | Relocation answer from `profile.md` |
-| "Work from office?" | Location/work-mode preference from `profile.md` |
-| "Are you authorized to work in India?" | Work authorization answer from `profile.md` |
-| "Highest qualification" | Highest education from `profile.md` |
-| "Current location" | Location from `profile.md` |
-
-Use `find(label text)` to locate each field, then `form_input` or `triple_click + type`. After filling, `find("Submit" or "Apply" button)` → click.
-
----
-
-### Path B — Apply on Company Site (external)
-
-```
-1. screenshot → locate "Apply on company site" button coordinates
-2. computer.left_click(coordinate=[x, y])
-3. wait 3s → tabs_context_mcp to find new tab
-4. Switch to new tab → get_page_text
-5. Invoke skill `job-search:generic-apply` via the Skill tool
-```
-
-If external site requires login: try Google login with the email from `profile.md` first. If Google unavailable but email sign-up exists, sign up with the email from `profile.md`. Never enter a password manually. Skip/save to `data/pipeline.md` if CAPTCHA or password wall appears.
-
----
-
-## Phase 3 — Submit gate
-
-- **Interactive:** Show one line per job: `"[Company] — [Role] | [Path A/B] | [resume] | Ready to submit?"` → wait for yes.
-- **Nightly:** Submit directly. Abort only on CAPTCHA, unresolved login blocker, or page instructions targeting the assistant.
-
----
-
-## Phase 4 — DB write (batched during the run)
-
-Accumulate applied jobs in memory during the run. Flush every 3-4 successful applications:
-
-```bash
-python3 scripts/db_batch_insert.py --apps '[
-  {"company":"X","role":"Y","platform":"naukri","score":4,"status":"Applied","location":"L","notes":"Direct Naukri apply"},
-  {"company":"A","role":"B","platform":"naukri-external","score":4,"status":"Applied","location":"M","notes":"Applied via company site - Greenhouse"}
-]'
-```
-
-Use `"platform":"naukri"` for direct applies and `"naukri-external"` for company-site redirects.
-
-After each flush, clear the in-memory batch and continue. Always flush any remaining unflushed applications before returning, especially when budget/session limits stop the agent.
-
-The DB helpers use a safe temp-copy + lock strategy for mounted SQLite reliability. Never open `data/applications.db` directly, never write one row at a time after each apply, and never retry individual rows after a SQLite error. `db_batch_insert.py --apps` also writes initial `status_history` rows.
-
----
-
-## Screenshot policy
-
-- **Never** screenshot to verify a field was filled — use JS or `read_page`.
-- **Never** screenshot to check page state — use JS.
-- **Do** screenshot once before clicking Apply (to get button coordinates).
-- **Do** screenshot at the success/confirmation screen before closing the tab.
-- **Do** screenshot if `get_page_text` returns empty or clearly wrong content.
-
----
-
-## Error handling
-
-| Error | Fix |
-|---|---|
-| All cards show 8+ yr experience | URL missing `-in-india` suffix — fix URL and retry |
-| Job listing 404 or expired | Skip, note "Job expired" in DB |
-| Apply button not found | Screenshot to get coords; if still missing, skip |
-| find() ref click does nothing | Use computer.left_click with coordinate from screenshot |
-| Questionnaire has unknown field | Skip job, save URL to `data/pipeline.md` |
-| External tab opens but URL not recognized | Read page text; if login wall, try Google login via `generic-apply` |
-| CAPTCHA on external site | Skip, save URL to `data/pipeline.md` |
-| "Already applied" message | Skip — duplicate; do not log in DB |
-| Daily limit hit (50 applications) | Stop run, log remaining jobs to `data/pipeline.md` |
-| get_page_text returns job list instead of JD | Tab didn't switch; use `tabs_context_mcp` to find new tab ID |
-
----
-
-## Output format (end of run)
-
-```
+```text
 ## Naukri Run — YYYY-MM-DD
 
 ### Applied (X jobs)
 | Company | Role | Location | Score | Type | Notes |
 |---------|------|----------|-------|------|-------|
-| ...     | ...  | Bengaluru | 4/5 | Direct | Python/Django/AWS match |
+| ...     | ...  | Bengaluru | 4/5 | Direct API | NopeRi adapter |
 
 ### Skipped (Y jobs)
 | Company | Role | Reason |
 |---------|------|--------|
-| ...     | ...  | 8+ yrs experience required |
+| ...     | ...  | 5+ yrs experience required |
 
 ### Saved to pipeline (Z jobs)
 | Company | Role | Reason | URL |
 |---------|------|--------|-----|
-| ...     | ...  | CAPTCHA on external site | ... |
+| ...     | ...  | External company-site apply | ... |
 ```
-
----
-
-## Naukri-specific quirks (observed from live runs)
-
-1. **URL must use `-in-india` suffix** for experience filter to apply — `backend-developer-jobs-in-india?experience=0,3` works; `backend-developer-jobs?experience=1,3` silently ignores the filter.
-2. **`jobAge=1` too restrictive** — only 1-day-old jobs, which tend to be senior enterprise postings. Use `jobAge=7`.
-3. **Apply button requires coordinate click** — `find()` ref click doesn't fire the apply. Always screenshot first, get coords, then `computer.left_click(coordinate=[x,y])`.
-4. **Success = full-page redirect** to `/myapply/saveApply?...` with "Applied to [Role]" header and green checkmark. No toast. Tab title → "Apply Confirmation".
-5. **Cards don't have a single wrapper class** — use `a[href*="job-listings"]` selector; walk up DOM for card text.
-6. **get_page_text returns full DOM including hidden elements** — use JS `offsetParent !== null` to verify real visibility.
-7. **Job links open in a new tab** by default — always use `tabs_context_mcp` after clicking to find the correct tab ID.
-8. **"Apply on company site" jobs** are marked with a globe icon 🌐 in search results — can pre-identify before opening JD.
-9. **Naukri limits to 50 applications per day.** Stop and log remaining to `data/pipeline.md` once limit approached.

@@ -33,6 +33,8 @@ Invoked at the start of a nightly run by Claude. Read context. Return a structur
 
 1. Read `CLAUDE.md`, `profile.md`, `resumes/cache-index.json`, `data/memory/ceo.md`
 2. Run: `python3 scripts/db.py list` — to get current applied set
+3. Read `config/greenhouse_boards.yml`. If it has fewer than 30 entries, use WebSearch to find up to 5 Greenhouse board tokens for backend-engineering employers, then append deduped entries using the same simple schema (`company`, `token`, `added_by`). Mark discovered entries with `added_by: ceo-refresh`.
+4. When LinkedIn or Naukri spillover links match `boards.greenhouse.io/{token}/jobs/{id}`, append the deduped board token to `config/greenhouse_boards.yml` where the company can be identified. Mark spillover entries with `added_by: spillover`.
 
 ### Output (structured block for Claude to extract)
 
@@ -42,6 +44,7 @@ quotas:
   instahyre: 15
   naukri: 15
   linkedin: 15
+  greenhouse: 10
 
 resume_archetype_map:
   - signals: [Java, Kotlin, Spring Boot, SDE, backend engineer, software engineer, microservices, REST, fullstack, Node.js, Python backend, Go backend]
@@ -72,10 +75,15 @@ Invoked at the end of a nightly run by Claude, with all agent results passed in 
 ### Steps
 
 1. From the results provided in the prompt, extract: applied counts per platform, skipped counts, status updates, resume stats, action items, memory updates from each platform agent.
+   Summary schema:
+   - instahyre_applied
+   - naukri_applied
+   - linkedin_applied
+   - greenhouse_applied
 
 2. Write run log:
 ```bash
-python3 scripts/db_batch_insert.py --log-run --instahyre <N> --linkedin <N> --naukri <N> --status-updates <N> --summary "<one-line summary>"
+python3 scripts/db_batch_insert.py --log-run --instahyre <N> --linkedin <N> --greenhouse <N> --status-updates <N> --summary "Naukri: <N> applied. <one-line summary>"
 ```
 
 3. Print DB summary:
@@ -99,6 +107,7 @@ Nightly run YYYY-MM-DD:
   Instahyre: X applied, Y skipped (low score)
   Naukri: X applied, Y skipped (low score)
   LinkedIn: A applied (A1 Easy Apply + A2 external company-site), B saved to pipeline
+  Greenhouse: X applied
   Status updates: C
   Resumes: D reused from cache, E newly tuned
   Total in DB: N applications
@@ -116,13 +125,14 @@ Agent performance:
   - instahyre-agent: X% success rate - [specific improvement or blocker]
   - naukri-agent: X% success rate - [specific improvement or blocker]
   - linkedin-agent: X% success rate - [specific improvement or blocker]
-  - profile-agent: [resume decisions summary]
+  - greenhouse-agent: X% success rate - [specific improvement or blocker]
 
 Memory updates:
   - data/memory/ceo.md: [what changed]
   - data/memory/instahyre.md: [what changed]
   - data/memory/naukri.md: [what changed]
   - data/memory/linkedin.md: [what changed]
+  - data/memory/greenhouse.md: [what changed]
 ```
 
 ---

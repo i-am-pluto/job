@@ -37,6 +37,8 @@ Apply to any external job portal. Called by the LinkedIn skill for external-appl
 | General backend / SDE / fullstack | `output/base.pdf` |
 
 Pick: `python3 scripts/pick_resume.py "<title + top 3 JD skills>"`
+- `REUSE|tag|pdf|score` means use the returned cached PDF and do not tune.
+- `TUNE|tag|pdf|score` means invoke skill `job-search:resume-tuner` via the Skill tool only when the concrete JD justifies tuning and the run/user budget allows it; otherwise use the returned fallback PDF.
 
 ---
 
@@ -82,6 +84,9 @@ Detect platform from URL. Note which fields are present.
 ```bash
 python3 scripts/pick_resume.py "<job title + top 3 JD skills>"
 ```
+Interpret the result before uploading:
+- `REUSE|tag|pdf|score`: use the returned cached PDF.
+- `TUNE|tag|pdf|score`: invoke skill `job-search:resume-tuner` only when the concrete JD justifies tuning and the run/user budget allows it; otherwise upload the returned fallback PDF.
 
 **Step 3 — Fill all fields in one pass:**
 ```

@@ -1,6 +1,6 @@
 {
   "name": "job-search",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Automated job application system for Instahyre, LinkedIn, Naukri, and external ATS workflows.",
   "author": {
     "name": "i-am-pluto",
@@ -22,6 +22,7 @@
     "./skills/instahyre",
     "./skills/linkedin",
     "./skills/naukri",
+    "./skills/greenhouse",
     "./skills/generic-apply",
     "./skills/resume-tuner"
   ],
@@ -30,8 +31,8 @@
     "./agents/instahyre-agent.md",
     "./agents/linkedin-agent.md",
     "./agents/naukri-agent.md",
-    "./agents/generic-apply-agent.md",
-    "./agents/profile-agent.md"
+    "./agents/greenhouse-agent.md",
+    "./agents/generic-apply-agent.md"
   ],
   "commands": [
     "./commands/nightly-job-apply.md",
