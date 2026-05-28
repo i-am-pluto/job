@@ -1,0 +1,41 @@
+{
+  "name": "job-search",
+  "version": "1.1.3",
+  "description": "Automated job application system for Instahyre, LinkedIn, Naukri, and external ATS workflows.",
+  "author": {
+    "name": "i-am-pluto",
+    "url": "https://github.com/i-am-pluto"
+  },
+  "homepage": "https://github.com/i-am-pluto/job",
+  "repository": "https://github.com/i-am-pluto/job",
+  "license": "UNLICENSED",
+  "keywords": [
+    "jobs",
+    "applications",
+    "resume",
+    "linkedin",
+    "naukri",
+    "instahyre",
+    "ats"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Job Search",
+    "shortDescription": "Automate job search workflows and application tracking.",
+    "longDescription": "Automated job-search workspace for scanning jobs, choosing resumes, filling applications, tracking status, and running an autonomous nightly application flow.",
+    "developerName": "i-am-pluto",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/i-am-pluto/job",
+    "defaultPrompt": [
+      "Run job-apply-status",
+      "Tune this resume for a job description",
+      "Run the nightly job application flow"
+    ],
+    "brandColor": "#2563EB"
+  }
+}

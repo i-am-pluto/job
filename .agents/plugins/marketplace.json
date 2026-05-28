@@ -1,0 +1,20 @@
+{
+  "name": "job-search-marketplace",
+  "interface": {
+    "displayName": "Job Search Marketplace"
+  },
+  "plugins": [
+    {
+      "name": "job-search",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
