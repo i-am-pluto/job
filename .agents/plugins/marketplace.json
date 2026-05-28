@@ -8,7 +8,7 @@
       "name": "job-search",
       "source": {
         "source": "local",
-        "path": "./"
+        "path": "./plugins/job-search"
       },
       "policy": {
         "installation": "AVAILABLE",
