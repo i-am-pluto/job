@@ -189,6 +189,39 @@ class DbToolTests(unittest.TestCase):
             "notes": "Direct apply",
         })
 
+    def test_log_gmail_deduplicates_by_message_id(self):
+        first = self.run_script(
+            "scripts/db.py",
+            "log-gmail",
+            "--message-id",
+            "msg-1",
+            "--sender",
+            "jobs@example.com",
+            "--subject",
+            "Application update",
+            "--action",
+            "status_updated",
+        )
+        second = self.run_script(
+            "scripts/db.py",
+            "log-gmail",
+            "--message-id",
+            "msg-1",
+            "--sender",
+            "jobs@example.com",
+            "--subject",
+            "Application update",
+            "--action",
+            "status_updated",
+        )
+
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        con = sqlite3.connect(self.db_path)
+        count = con.execute("SELECT COUNT(*) FROM gmail_scan_log WHERE message_id='msg-1'").fetchone()[0]
+        con.close()
+        self.assertEqual(count, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,19 +6,19 @@ version: 1.1.1
 
 # LinkedIn Job Application Skill
 
-Apply to backend jobs with a strong preference for the company's own careers/ATS site by invoking skill `job-search:generic-apply` via the Skill tool. LinkedIn is primarily a discovery source; Easy Apply is fallback when no company-site path is available. Both external and Easy Apply submissions count toward target.
+Apply to backend jobs on LinkedIn only as a bounded fallback after Naukri and Instahyre. Easy Apply is the default path; external/company-site flows are skipped or saved unless the controller explicitly assigns external LinkedIn budget.
 
 **Trigger:** "apply on LinkedIn", "find LinkedIn jobs", "search LinkedIn for [role]", or a LinkedIn jobs URL.
-**Target:** 5-10 submitted fallback applications per nightly run, only after Naukri and Instahyre finish or stop with budget remaining.
+**Target:** 3-5 submitted fallback Easy Apply applications per nightly run, only after Naukri and Instahyre finish or stop with budget remaining.
 **Mode:** Interactive → stop before submit and confirm. Nightly (`nightly-job-apply`) → submit autonomously.
 
 ## Agent budget
 
 LinkedIn is the fallback APPLY agent. Do not run it in parallel with Naukri or Instahyre.
 
-- Budget: 25 tool calls / 15k tokens max.
-- Stop at 10 successful submitted applications, or earlier if the controller passes a smaller remaining budget.
-- Prefer Easy Apply. Use external/company-site flows only when the path is already obvious and simple.
+- Budget: 12 tool calls / 8k tokens max.
+- Stop at 5 successful submitted applications, or earlier if the controller passes a smaller remaining budget.
+- Use Easy Apply only by default. Use external/company-site flows only when the controller explicitly assigns external LinkedIn budget.
 - Save complex external ATS, login, CAPTCHA, Workday, password, or multi-page flows to `data/pipeline.md` instead of spending the session.
 - Flush DB after every 3-4 successful applications. If the budget or session limit stops the run, flush any unflushed applications before returning.
 - If any tool reports `You've hit your session limit`, stop immediately after flushing. Do not retry and do not continue to another job.
@@ -44,11 +44,15 @@ Read `profile.md`, `resumes/base.md`. Then use the **Identity And Contact**, **C
 
 ---
 
+## Nightly Status
+
+LinkedIn status checks are disabled in nightly runs. Do not check LinkedIn notifications or messages unless the user explicitly asks for LinkedIn status.
+
 ## Phase 1 — Bulk scan (ONE read_page, score all, no JD opens yet)
 
-Navigate to search URL (NO `f_AL` — include external-apply jobs):
+Navigate to Easy Apply search URL:
 ```
-https://www.linkedin.com/jobs/search/?keywords=<KW>&location=India&f_TPR=r604800&f_E=2%2C3%2C4&f_WT=1%2C2%2C3&sortBy=DD
+https://www.linkedin.com/jobs/search/?keywords=<KW>&location=India&f_TPR=r604800&f_E=2%2C3%2C4&f_WT=1%2C2%2C3&f_AL=true&sortBy=DD
 ```
 
 Keyword matrix (run in order until 15 applied):
@@ -76,7 +80,7 @@ For each job in queue, execute one `browser_batch` to open + read:
 
 From the JD text: confirm no hard 5+ yr minimum, confirm not frontend/mobile. If skip → dismiss card, next.
 
-**External-first rule:** For every qualifying company, prefer applying on the company's own careers page or ATS by invoking skill `job-search:generic-apply` via the Skill tool. Good companies usually host jobs on their own careers sites, Greenhouse, Lever, Ashby, SmartRecruiters, Workable, or similar. If LinkedIn shows an external **Apply** button, use that path before Easy Apply. If LinkedIn only shows Easy Apply but the company is strong, first check the JD/company site for a direct careers URL when it can be found without a long search; if found, invoke generic-apply skill. Use Easy Apply only when no reliable external/company-site path is available or the external path is blocked.
+**Easy Apply rule:** In normal nightly runs, apply only through Easy Apply. If LinkedIn shows an external **Apply** button, save or skip it unless the controller explicitly assigned external LinkedIn budget. Do not search company sites from LinkedIn during the fallback run.
 
 Pick resume once per job: `python3 scripts/pick_resume.py "<job title + top 3 skills from JD>"`.
 - `REUSE|tag|pdf|score` means use the returned cached PDF and do not tune.
@@ -86,7 +90,9 @@ Then apply via the correct path:
 
 ---
 
-### Path A — External / Company-Site Apply (preferred)
+### Path A — External / Company-Site Apply (explicit budget only)
+
+Skip this path in normal nightly runs. Save the URL to `data/pipeline.md` only when the user or CEO explicitly assigns external LinkedIn budget.
 
 ```
 browser_batch: [click "Apply" button] → [wait 3s] → [get_page_text on new tab]

@@ -33,8 +33,9 @@ Invoked at the start of a nightly run by Claude. Read context. Return a structur
 
 1. Read `CLAUDE.md`, `profile.md`, `resumes/cache-index.json`, `data/memory/ceo.md`
 2. Run: `python3 scripts/db.py list` — to get current applied set
-3. Read `config/greenhouse_boards.yml`. If it has fewer than 30 entries, use WebSearch to find up to 5 Greenhouse board tokens for backend-engineering employers, then append deduped entries using the same simple schema (`company`, `token`, `added_by`). Mark discovered entries with `added_by: ceo-refresh`.
-4. When LinkedIn or Naukri spillover links match `boards.greenhouse.io/{token}/jobs/{id}`, append the deduped board token to `config/greenhouse_boards.yml` where the company can be identified. Mark spillover entries with `added_by: spillover`.
+3. Read `data/run-state.json`. Run Greenhouse board discovery refresh only when `python3 scripts/run_state.py greenhouse-due` returns `due`; otherwise report the skip reason and do not use WebSearch for boards.
+4. If Greenhouse board refresh is due, read `config/greenhouse_boards.yml`. If it has fewer than 30 entries, use WebSearch to find up to 5 Greenhouse board tokens for backend-engineering employers, then append deduped entries using the same simple schema (`company`, `token`, `added_by`). Mark discovered entries with `added_by: ceo-refresh`.
+5. When LinkedIn or Naukri spillover links match `boards.greenhouse.io/{token}/jobs/{id}`, append the deduped board token to `config/greenhouse_boards.yml` where the company can be identified. Mark spillover entries with `added_by: spillover`.
 
 ### Output (structured block for Claude to extract)
 
@@ -43,7 +44,7 @@ PLAN
 quotas:
   instahyre: 15
   naukri: 15
-  linkedin: 15
+  linkedin: 3-5 fallback Easy Apply only
   greenhouse: 10
 
 resume_archetype_map:
@@ -62,6 +63,8 @@ dup_list:
 
 scoring_rule: backend/fullstack >= 4. Skip: frontend-only, mobile-only, pure DevOps/QA, hard 5+ year minimum.
 
+greenhouse_scan_gate: <due OR skipped: last scanned YYYY-MM-DD, next eligible YYYY-MM-DD>
+status_scope: Gmail-only incremental status; portal status checks are manual/weekly unless explicitly requested
 ceo_advice: <any run-specific notes from data/memory/ceo.md, e.g. known blockers, keyword priorities, platform health>
 END PLAN
 ```
@@ -94,6 +97,7 @@ python3 scripts/db.py summary
 4. Update `data/memory/ceo.md`:
    - Revised platform health table (applied/qualified/blocked counts)
    - Durable lessons from this run (selectors that broke, keywords that performed, resume archetype wins)
+   - Greenhouse skipped-scan reason when the 7-day board scan gate is not due
    - Next run checklist updates
 
 5. Apply any `data/memory/<platform>.md` updates reported by platform agents (write them directly).
@@ -106,8 +110,9 @@ Return the final report in the format from `CLAUDE.md`, plus:
 Nightly run YYYY-MM-DD:
   Instahyre: X applied, Y skipped (low score)
   Naukri: X applied, Y skipped (low score)
-  LinkedIn: A applied (A1 Easy Apply + A2 external company-site), B saved to pipeline
+  LinkedIn: A Easy Apply applied, B saved/skipped
   Greenhouse: X applied
+  Skipped scans: Greenhouse board scan skipped: last scanned YYYY-MM-DD, next eligible YYYY-MM-DD
   Status updates: C
   Resumes: D reused from cache, E newly tuned
   Total in DB: N applications

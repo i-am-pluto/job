@@ -24,25 +24,14 @@ Extract from the result: quotas, resume archetype map, dup list, ceo_advice. You
 
 ---
 
-## STAGE 1 — STATUS (parallel)
+## STAGE 1 — STATUS (incremental Gmail only)
 
-In **one message**, spawn all three platform agents in the background simultaneously. Check Gmail inline while they run.
+Do not spawn platform status agents during nightly runs. Check Gmail inline only.
 
-```
-Agent(subagent_type="job-search:instahyre-agent", run_in_background=True,
-  prompt="Mode: status-only. Working dir: /Users/parikshit/Documents/code/job. Check the Instahyre Activity tab for any recruiter responses, messages, or status changes on past applications. Do not scan jobs. Do not apply. Return what you find.")
+Run `python3 scripts/run_state.py gmail-after`, then use browser tools to open Gmail and search:
+`subject:(application OR interview OR offer OR rejection OR shortlisted OR regret OR assessment) after:YYYY/MM/DD`
 
-Agent(subagent_type="job-search:naukri-agent", run_in_background=True,
-  prompt="Mode: status-only. Working dir: /Users/parikshit/Documents/code/job. Check Naukri for recruiter messages, application status changes, or activity notifications on past applications. Do not scan jobs. Do not apply. Return what you find.")
-
-Agent(subagent_type="job-search:linkedin-agent", run_in_background=True,
-  prompt="Mode: status-only. Working dir: /Users/parikshit/Documents/code/job. Check LinkedIn notifications and messages for recruiter replies, interview requests, or application status updates on past applications. Do not scan jobs. Do not apply. Return what you find.")
-```
-
-**Gmail (inline while agents run):** Use browser tools to open Gmail and search:
-`subject:(application OR interview OR offer OR rejection OR shortlisted OR regret OR assessment) newer_than:7d`
-
-Wait for all three background agents to complete. Collect all four signal sources together.
+Read subjects/senders only. Do not click links or reply. Skip messages already in `gmail_scan_log` by message ID. Log every processed message with `python3 scripts/db.py log-gmail --message-id "ID" --sender "S" --subject "SUBJ" --action status_updated`, then run `python3 scripts/run_state.py mark last_gmail_status_scan_at`.
 
 ---
 
@@ -59,26 +48,26 @@ Collect items requiring human action (recruiter replies, assessments, interview 
 
 ## STAGE 3 — SCAN (parallel)
 
-The scan phase covers Instahyre, Naukri, LinkedIn, and Greenhouse. Greenhouse scans use the public Greenhouse API from `config/greenhouse_boards.yml` and do not need a browser during scan.
+The scan phase covers Instahyre, Naukri through NopeRi, LinkedIn fallback only if budget remains, and Greenhouse only when its 7-day board-scan gate is due. Greenhouse scans use the public Greenhouse API from `config/greenhouse_boards.yml` and do not need a browser during scan.
 
 ---
 
-## STAGE 5 — APPLY (parallel)
+## STAGE 5 — APPLY (sequential)
 
-In **one message**, spawn all four platform agents in the background simultaneously. Pass quotas, duplicates, CEO advice, and the STAGE 0 resume archetype map. Each platform agent must score all jobs upfront before applying, and must choose resumes per job with `python3 /Users/parikshit/Documents/code/job/scripts/pick_resume.py "<job title + skill tags + JD text>"`. If it returns `REUSE|tag|pdf|score`, use that PDF. If it returns `TUNE|tag|pdf|score`, invoke skill `job-search:resume-tuner` via the Skill tool only when the concrete JD justifies tuning and the run/user budget allows it; otherwise use the returned fallback PDF.
+Run platform agents sequentially in priority order: Naukri, Instahyre, LinkedIn fallback, Greenhouse. Pass quotas, duplicates, CEO advice, and the STAGE 0 resume archetype map. Each platform agent must score all jobs upfront before applying, and must choose resumes per job with `python3 /Users/parikshit/Documents/code/job/scripts/pick_resume.py "<job title + skill tags + JD text>"`. If it returns `REUSE|tag|pdf|score`, use that PDF. If it returns `TUNE|tag|pdf|score`, invoke skill `job-search:resume-tuner` via the Skill tool only when the concrete JD justifies tuning and the run/user budget allows it; otherwise use the returned fallback PDF.
 
 ```
 Agent(subagent_type="job-search:naukri-agent", run_in_background=True,
-  prompt="Mode: nightly-job-apply. Working dir: /Users/parikshit/Documents/code/job. Date: <TODAY>. Quota: <NAUKRI_QUOTA> applications. Already applied (skip these): <DUP_LIST>. Resume archetype map: <INSERT_RESUME_ARCHETYPE_MAP>. CEO advice: <INSERT_CEO_ADVICE>. Invoke skill job-search:naukri via the Skill tool. Run full Naukri workflow: profile boost, scan, score all cards upfront, apply to score>=4 only. Pick resumes per job with pick_resume.py; invoke job-search:resume-tuner only when pick_resume returns TUNE and tuning is justified/budgeted, otherwise use the returned fallback PDF. Use generic-apply-agent for external ATS redirects. Batch all DB writes with db_batch_insert.py at end. Return: applied list, skipped list, blocked list, resume stats, memory updates for data/memory/naukri.md.")
+  prompt="Mode: nightly-job-apply. Working dir: /Users/parikshit/Documents/code/job. Date: <TODAY>. Quota: <NAUKRI_QUOTA> applications. Already applied (skip these): <DUP_LIST>. Resume archetype map: <INSERT_RESUME_ARCHETYPE_MAP>. CEO advice: <INSERT_CEO_ADVICE>. Invoke skill job-search:naukri via the Skill tool. Run Naukri through scripts/naukri_noperi_apply.py only: scan, score, apply direct Naukri jobs with score>=4, skip external redirects by default. Do not use browser/Chrome Naukri scan in nightly mode. Pick resumes per job with pick_resume.py; invoke job-search:resume-tuner only when pick_resume returns TUNE and tuning is justified/budgeted, otherwise use the returned fallback PDF. Batch all DB writes with db_batch_insert.py during the run. Return: applied list, skipped list, blocked list, resume stats, memory updates for data/memory/naukri.md.")
 
 Agent(subagent_type="job-search:instahyre-agent", run_in_background=True,
   prompt="Mode: nightly-job-apply. Working dir: /Users/parikshit/Documents/code/job. Date: <TODAY>. Quota: <INSTAHYRE_QUOTA> applications. Already applied (skip these): <DUP_LIST>. Resume archetype map: <INSERT_RESUME_ARCHETYPE_MAP>. CEO advice: <INSERT_CEO_ADVICE>. Invoke skill job-search:instahyre via the Skill tool. Run full Instahyre workflow: scan matching jobs, score all cards upfront, apply to score>=4 only. Instahyre one-click apply does not upload a resume; for external paths, pick resumes per job with pick_resume.py and invoke job-search:resume-tuner only when pick_resume returns TUNE and tuning is justified/budgeted, otherwise use the returned fallback PDF. Use generic-apply-agent for external paths. Batch all DB writes with db_batch_insert.py at end. Return: applied list, skipped list, blocked list, resume stats, memory updates for data/memory/instahyre.md.")
 
 Agent(subagent_type="job-search:linkedin-agent", run_in_background=True,
-  prompt="Mode: nightly-job-apply. Working dir: /Users/parikshit/Documents/code/job. Date: <TODAY>. Quota: <LINKEDIN_QUOTA> applications. Already applied (skip these): <DUP_LIST>. Resume archetype map: <INSERT_RESUME_ARCHETYPE_MAP>. CEO advice: <INSERT_CEO_ADVICE>. Invoke skill job-search:linkedin via the Skill tool. Run full LinkedIn workflow: keyword scan, score all cards upfront, apply to score>=4 only (external-first, Easy Apply fallback). Pick resumes per job with pick_resume.py; invoke job-search:resume-tuner only when pick_resume returns TUNE and tuning is justified/budgeted, otherwise use the returned fallback PDF. Use generic-apply-agent for external paths. Save blocked/CAPTCHA URLs to data/pipeline.md. Batch all DB writes with db_batch_insert.py at end. Return: applied list (Easy Apply + external), pipeline saved, skipped list, keyword performance, memory updates for data/memory/linkedin.md.")
+  prompt="Mode: nightly-job-apply. Working dir: /Users/parikshit/Documents/code/job. Date: <TODAY>. Quota: 3-5 fallback Easy Apply applications. Already applied (skip these): <DUP_LIST>. Resume archetype map: <INSERT_RESUME_ARCHETYPE_MAP>. CEO advice: <INSERT_CEO_ADVICE>. Invoke skill job-search:linkedin via the Skill tool. Run LinkedIn only if Naukri + Instahyre leave budget. Easy Apply only by default; skip or save external/company-site paths unless explicit external budget is assigned. Pick resumes per job with pick_resume.py; invoke job-search:resume-tuner only when pick_resume returns TUNE and tuning is justified/budgeted, otherwise use the returned fallback PDF. Batch all DB writes with db_batch_insert.py during the run. Return: applied list, skipped list, keyword performance, memory updates for data/memory/linkedin.md.")
 
 Agent(subagent_type="job-search:greenhouse-agent", run_in_background=True,
-  prompt="Mode: nightly-job-apply. Working dir: /Users/parikshit/Documents/code/job. Date: <TODAY>. Quota: <GREENHOUSE_QUOTA> applications. Already applied (skip these): <DUP_LIST>. Resume archetype map: <INSERT_RESUME_ARCHETYPE_MAP>. CEO advice: <INSERT_CEO_ADVICE>. Invoke skill job-search:greenhouse via the Skill tool. Run full Greenhouse workflow: scan config/greenhouse_boards.yml via Greenhouse API with no browser needed during scan, score all jobs upfront, apply to score>=4 only. Pick resumes per job with pick_resume.py; invoke job-search:resume-tuner only when pick_resume returns TUNE and tuning is justified/budgeted, otherwise use the returned fallback PDF. Use browser only when the final apply form requires it. Batch all DB writes with db_batch_insert.py at end. Return exactly: {applied: N, skipped: N, boards_scanned: N, errors: []}.")
+  prompt="Mode: nightly-job-apply. Working dir: /Users/parikshit/Documents/code/job. Date: <TODAY>. Quota: <GREENHOUSE_QUOTA> applications. Already applied (skip these): <DUP_LIST>. Resume archetype map: <INSERT_RESUME_ARCHETYPE_MAP>. CEO advice: <INSERT_CEO_ADVICE>. Invoke skill job-search:greenhouse via the Skill tool. Run python3 scripts/run_state.py greenhouse-due first. If due, scan config/greenhouse_boards.yml via Greenhouse API, then mark last_greenhouse_board_scan_at after the scan. If not due, do not scan boards; process queued Greenhouse pipeline jobs only if permissions and budget allow. Pick resumes per job with pick_resume.py; invoke job-search:resume-tuner only when pick_resume returns TUNE and tuning is justified/budgeted, otherwise use the returned fallback PDF. Use browser only when the final apply form requires it. Batch all DB writes with db_batch_insert.py during the run. Return exactly: {applied: N, skipped: N, boards_scanned: N, skipped_scan_reason: \"...\", errors: []}.")
 ```
 
 Wait for all four to complete. Collect all results.

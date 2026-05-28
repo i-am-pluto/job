@@ -125,6 +125,37 @@ Total: 2
         self.assertEqual(payload["url"], "https://www.naukri.com/job-listings-42")
         json.dumps([payload])
 
+    def test_external_redirects_are_skipped_by_default(self):
+        adapter = load_module()
+        job = adapter.JobRecord(
+            job_id="99",
+            title="Backend Engineer",
+            company="BigCo",
+            location="India",
+            experience="2-4 Yrs",
+            apply_link="https://www.naukri.com/job-listings-99",
+            description="Build backend APIs",
+            tags=["java"],
+        )
+
+        self.assertTrue(adapter.should_skip_external_redirect(job, allow_external=False))
+        self.assertFalse(adapter.should_skip_external_redirect(job, allow_external=True))
+
+    def test_commercial_activity_notifications_are_not_actionable(self):
+        adapter = load_module()
+
+        self.assertFalse(adapter.is_actionable_naukri_notification("4 new NVites are waiting"))
+        self.assertFalse(adapter.is_actionable_naukri_notification("Recruiter viewed your profile"))
+        self.assertTrue(adapter.is_actionable_naukri_notification("Recruiter sent you a message about interview"))
+
+    def test_nightly_mode_disables_browser_fallback(self):
+        adapter = load_module()
+        parser = adapter.build_parser()
+
+        args = parser.parse_args(["--limit", "2"])
+
+        self.assertFalse(args.browser_fallback)
+
 
 if __name__ == "__main__":
     unittest.main()

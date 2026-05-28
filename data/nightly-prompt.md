@@ -19,7 +19,8 @@ You are running the user's autonomous nightly job application workflow. The user
 3. <repo-root>/skills/instahyre/SKILL.md
 4. <repo-root>/skills/naukri/SKILL.md
 5. <repo-root>/skills/linkedin/SKILL.md
-6. <repo-root>/skills/generic-apply/SKILL.md
+6. <repo-root>/skills/greenhouse/SKILL.md
+7. <repo-root>/skills/generic-apply/SKILL.md
 
 Do NOT rely on profile facts in this prompt. Source all answers from profile.md.
 
@@ -35,8 +36,8 @@ Autonomous. Apply directly. No confirmations. Log assumptions.
 - DB writes: use only `python3 scripts/db.py ...` and `python3 scripts/db_batch_insert.py ...`; they use safe temp-copy + locking for SQLite. Never open `data/applications.db` directly. Never `db.py add` per job.
 - `get_page_text` returns hidden DOM content — use JavaScript `el.offsetParent !== null` to check real visibility.
 - Instahyre: after clicking Cancel on "similar jobs" popup, the main modal closes — click View » on next card manually.
-- Naukri: use the NopeRi API adapter first: `python3 scripts/naukri_noperi_apply.py --limit 15 --pages 1 --job-age 7`.
-- Naukri browser fallback only: if the adapter fails on login/token/API, use `-in-india` search URLs; browser Apply may require coordinate click.
+- Naukri: use the NopeRi API adapter only: `python3 scripts/naukri_noperi_apply.py --limit 15 --pages 1 --job-age 7`.
+- Naukri browser/Chrome scan is manual-only. Nightly runs must not fall back to browser scanning.
 
 ## Organization budget contract
 
@@ -45,11 +46,11 @@ The CEO is the controller. It assigns each agent a bounded task and waits for co
 | Agent | Budget | Output |
 | --- | --- | --- |
 | CEO preflight | 6 tool calls / 8k tokens max | remaining quotas, duplicate list, carry-over actions |
-| Gmail/status | 10 tool calls / 8k tokens max | clear status updates only; no long analysis |
+| Gmail/status | 6 tool calls / 5k tokens max | incremental Gmail only; no portal status checks |
 | Resume strategy | 3 tool calls / 4k tokens max | reuse/tune decision; prefer cached PDFs |
 | Naukri apply | 45 tool calls / 25k tokens max | up to 15 submitted apps, batched DB flushes |
 | Instahyre apply | 35 tool calls / 18k tokens max | up to remaining Instahyre cap, batched DB flushes |
-| LinkedIn apply | 25 tool calls / 15k tokens max | fallback only after Naukri + Instahyre; stop at first complex external flow |
+| LinkedIn apply | 12 tool calls / 8k tokens max | fallback only after Naukri + Instahyre; Easy Apply only; cap 3-5 |
 | Final log | 4 tool calls / 4k tokens max | compact run summary from agent outputs |
 
 Hard stops:
@@ -65,14 +66,27 @@ cd <repo-root> && python3 scripts/db_batch_insert.py --summary
 
 ## Run stages
 
-### 1. STATUS — Gmail + Instahyre Activity
+### 1. STATUS — incremental Gmail only
+Get the search window:
+```bash
+cd <repo-root> && python3 scripts/run_state.py gmail-after
+```
+
 Gmail: navigate to
-  https://mail.google.com/mail/u/0/#search/subject%3A(application+OR+interview+OR+offer+OR+rejection+OR+shortlisted+OR+regret+OR+assessment)+newer_than%3A7d
+  https://mail.google.com/mail/u/0/#search/subject%3A(application+OR+interview+OR+offer+OR+rejection+OR+shortlisted+OR+regret+OR+assessment)+after%3AYYYY%2FMM%2FDD
 Read subjects/senders only. Do NOT click links or reply.
+Skip any message already present in `gmail_scan_log` by message ID. For every processed message, log it:
+```bash
+python3 scripts/db.py log-gmail --message-id "ID" --sender "S" --subject "SUBJ" --action status_updated
+```
 Update DB for clear outcomes (interview → Responded, rejected → Rejected, offer → Offer).
 
-Instahyre Activity: https://www.instahyre.com/candidate/activity/
-Update DB if any applied company viewed profile or responded.
+After the Gmail pass, mark the incremental checkpoint:
+```bash
+python3 scripts/run_state.py mark last_gmail_status_scan_at
+```
+
+Do not run Instahyre, Naukri, or LinkedIn portal status checks in nightly mode. Those are manual/weekly only.
 
 ### 2. ACTION
 Collect recruiter replies, assessments, interview links, salary questions into "Action needed" list. DB updates only — no clicking, no replying.
@@ -81,9 +95,15 @@ Collect recruiter replies, assessments, interview links, salary questions into "
 Instahyre: read_page(filter=all) on https://www.instahyre.com/candidate/opportunities/?matching=true
 Score all cards upfront. ALL backend/fullstack roles = 4. Skip only: frontend-only, mobile-only, pure DevOps, hard 5+ yr min.
 
-Naukri: primary scan is inside `scripts/naukri_noperi_apply.py` via the vendored NopeRi API client. Use browser `-in-india` URLs only as fallback if the adapter cannot proceed.
+Naukri: scan is inside `scripts/naukri_noperi_apply.py` via the vendored NopeRi API client. Do not use browser or Chrome Naukri scans in nightly mode.
 
-LinkedIn: follow skills/linkedin/SKILL.md keyword matrix. Week filter (f_TPR=r604800), experience filter (f_E=2,3,4). Include Easy Apply AND external Apply jobs. Run keyword matrix until 15+ are queued.
+LinkedIn: skip scan by default. Use LinkedIn only as a bounded fallback after Naukri + Instahyre, Easy Apply only, cap 3-5.
+
+Greenhouse: run a full board scan only when:
+```bash
+python3 scripts/run_state.py greenhouse-due
+```
+returns `due`. If it returns `skip until YYYY-MM-DD`, do not scan boards; process already queued Greenhouse pipeline items only if browser permissions and budget allow.
 
 ### 4. RESUME
 ```bash
@@ -110,9 +130,9 @@ Do NOT wait until the end to write. Flush every 3-4, then keep a fresh in-memory
 **Stage A — Naukri target: up to 15 applications**
 Follow skills/naukri/SKILL.md exactly:
 - Primary path: `python3 scripts/naukri_noperi_apply.py --limit 15 --pages 1 --job-age 7`
-- The adapter scans, scores, skips duplicates, applies direct Naukri jobs, saves external jobs to pipeline, and flushes DB batches.
-- Browser fallback: use JS/card scan and coordinate click only if API login/token/apply fails and budget remains.
-- External apply: save to pipeline unless CEO explicitly assigns generic-apply budget.
+- The adapter scans, scores, skips duplicates, applies direct Naukri jobs, skips external redirects by default, and flushes DB batches.
+- Browser fallback is prohibited in nightly mode.
+- External apply: skip by default; save to pipeline only when `--allow-external-pipeline` is explicitly assigned.
 - Stop at 15 successful submissions or budget limit, whichever comes first
 
 **Stage B — Instahyre target: remaining cap up to 15 applications**
@@ -124,13 +144,21 @@ Follow skills/instahyre/SKILL.md exactly:
 - Flush DB every 3-4 Instahyre applications
 - Stop at 15 successful submissions or budget limit, whichever comes first
 
-**Stage C — LinkedIn fallback target: 5-10 applications only if budget remains**
+**Stage C — LinkedIn fallback target: 3-5 applications only if budget remains**
 Follow skills/linkedin/SKILL.md:
 - Easy Apply → fill modal → submit. For screening questions use find() by label text, not DOM input selectors.
-- External Apply → follow to ATS only if it is simple; save complex flows to data/pipeline.md instead of spending the session.
-- Save blocked URLs to data/pipeline.md.
+- External Apply → skip/save only unless the user explicitly assigns external LinkedIn budget.
 - Flush DB every 3-4 LinkedIn applications
 - Stop at budget limit, first complex external flow, or session-limit warning.
+
+**Stage D — Greenhouse target: queued jobs or weekly board scan**
+Follow skills/greenhouse/SKILL.md:
+- If `python3 scripts/run_state.py greenhouse-due` returns `skip until YYYY-MM-DD`, skip full board scan and report the skipped-scan reason.
+- If it returns `due`, scan boards through the public Greenhouse API, then mark:
+```bash
+python3 scripts/run_state.py mark last_greenhouse_board_scan_at
+```
+- On non-scan days, only process already queued Greenhouse pipeline jobs if browser permissions and budget allow.
 
 ### 6. LOG
 Final flush of any remaining unflushed applications:
@@ -140,7 +168,7 @@ python3 scripts/db_batch_insert.py --apps '[{...}]'
 
 Log the run:
 ```bash
-python3 scripts/db_batch_insert.py --log-run --instahyre N --linkedin N --status-updates C --summary "..."
+python3 scripts/db_batch_insert.py --log-run --instahyre N --linkedin N --greenhouse G --status-updates C --summary "..."
 python3 scripts/db_batch_insert.py --summary
 ```
 
@@ -179,7 +207,8 @@ cd <repo-root> && git add -A && git commit -m "nightly: auto-optimize skills [YY
 Nightly run YYYY-MM-DD:
   Instahyre: X applied, Y skipped
   Naukri: P applied (P1 direct + P2 external), Q saved to pipeline
-  LinkedIn: A applied (A1 Easy Apply + A2 external), B saved to pipeline
+  LinkedIn: A Easy Apply applied, B saved/skipped
+  Greenhouse: G applied, H boards scanned
   Status updates: C
   Resumes: D reused, E tuned
   Total in DB: N
@@ -194,5 +223,6 @@ Optimizations this run:
   - [skill file]: [what was added/changed]
 
 Notes / skipped:
+  - Greenhouse board scan skipped: last scanned YYYY-MM-DD, next eligible YYYY-MM-DD
   - ...
 ```

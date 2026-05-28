@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S /Users/parikshit/.pyenv/versions/3.12.0/bin/python3
 """
 Naukri adapter backed by the vendored NopeRi API client.
 
@@ -12,6 +12,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
 import re
 import subprocess
 import sys
@@ -83,6 +87,29 @@ BACKEND_SIGNALS = [
     "distributed",
     "platform",
     "data platform",
+]
+
+COMMERCIAL_NOTIFICATION_PATTERNS = [
+    "nvite",
+    "profile view",
+    "viewed your profile",
+    "appeared in search",
+    "application booster",
+    "promote",
+    "paid service",
+    "recruiter action",
+]
+
+ACTIONABLE_NOTIFICATION_PATTERNS = [
+    "interview",
+    "message",
+    "assessment",
+    "shortlist",
+    "shortlisted",
+    "selected",
+    "offer",
+    "rejected",
+    "not moving forward",
 ]
 
 
@@ -177,6 +204,21 @@ def score_job(job: JobRecord) -> ScoreDecision:
     return ScoreDecision(3, False, "Backend ownership unclear")
 
 
+def should_skip_external_redirect(job: JobRecord, allow_external: bool = False) -> bool:
+    return not allow_external
+
+
+def is_actionable_naukri_notification(text: str) -> bool:
+    normalized = (text or "").lower()
+    if not normalized.strip():
+        return False
+    if any(pattern in normalized for pattern in ACTIONABLE_NOTIFICATION_PATTERNS):
+        return True
+    if any(pattern in normalized for pattern in COMMERCIAL_NOTIFICATION_PATTERNS):
+        return False
+    return False
+
+
 def parse_existing_applications(output: str) -> set[tuple[str, str, str]]:
     existing = set()
     for raw_line in output.splitlines():
@@ -224,8 +266,54 @@ def load_noperi_clients():
         sys.path.insert(0, vendor_path)
     from src.client.job_client import NaukriJobClient
     from src.client.naukri_client import NaukriLoginClient
+    from src.exceptions.exceptions import NaukriAuthError
+    from src.models.models import NaukriSession
 
-    return NaukriLoginClient, NaukriJobClient
+    class _CompatLoginClient(NaukriLoginClient):
+        """Wraps NaukriLoginClient to fix httpcloak Session.cookies compat.
+
+        httpcloak returns cookies as a list; vendor code calls .get() expecting
+        a dict. Override login/verify_otp to use get_cookie() instead.
+        """
+
+        def _get_token(self):
+            c = self.session.get_cookie("nauk_at")
+            return c.value if c else None
+
+        def login(self):
+            res = self._login_request()
+            if not res.ok:
+                raise NaukriAuthError("Login failed")
+            token = self._get_token()
+            if not token:
+                raise NaukriAuthError("No token")
+            self.naukri_session = NaukriSession(token, self.session.cookies)
+            try:
+                self.cache["form_key"] = self.get_form_key2()
+            except Exception:
+                pass
+            return self.naukri_session
+
+        def verify_otp(self, otp: str, username: str = None, is_mobile: bool = True):
+            res = self._verify_otp_request(username or self.username, otp, is_mobile)
+            if not res.ok:
+                raise NaukriAuthError(f"OTP verification failed ({res.status_code})")
+            token = self._get_token()
+            if not token:
+                try:
+                    token = res.json().get("authToken") or res.json().get("token")
+                except Exception:
+                    pass
+            if not token:
+                raise NaukriAuthError("OTP verified but no auth token received")
+            self.naukri_session = NaukriSession(token, self.session.cookies)
+            try:
+                self.cache["form_key"] = self.get_form_key2()
+            except Exception:
+                pass
+            return self.naukri_session
+
+    return _CompatLoginClient, NaukriJobClient
 
 
 def run_command(args: list[str]) -> str:
@@ -397,8 +485,10 @@ def run(args: argparse.Namespace) -> int:
 
         is_external = jc.is_external_apply(job.job_id)
         if is_external:
-            blocked.append((job, "external company-site apply"))
-            save_pipeline(job, "external company-site apply")
+            reason = "external company-site apply skipped by default"
+            blocked.append((job, reason))
+            if args.allow_external_pipeline:
+                save_pipeline(job, reason)
             continue
 
         resume = pick_resume(job)
@@ -457,6 +547,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--limit", type=int, default=15, help="Maximum direct Naukri applications to submit.")
     parser.add_argument("--pages", type=int, default=1, help="Search pages per keyword.")
     parser.add_argument("--job-age", type=int, default=7, help="Naukri jobAge filter in days.")
+    parser.add_argument("--allow-external-pipeline", action="store_true", help="Save external redirects to data/pipeline.md.")
+    parser.set_defaults(browser_fallback=False)
     return parser
 
 

@@ -15,6 +15,7 @@ Discover backend/SDE jobs from public Greenhouse board APIs, score them before o
 ## Agent Budget
 
 - Discovery budget: 4 `curl` calls per board token.
+- Full board discovery/scanning is gated by `data/run-state.json`: run `python3 scripts/run_state.py greenhouse-due` before reading boards. If it prints `skip until YYYY-MM-DD`, do not scan boards this run; report the skip reason and only process already queued Greenhouse pipeline jobs if browser permissions and budget allow.
 - Apply budget: about 8 browser tool calls per application, delegated to `generic-apply`.
 - Stop at 10 successful submitted applications, or earlier if the controller passes a smaller remaining budget.
 - If any tool reports `You've hit your session limit`, stop immediately after flushing all unflushed DB rows.
@@ -22,7 +23,7 @@ Discover backend/SDE jobs from public Greenhouse board APIs, score them before o
 
 ## Board Sources
 
-Load known boards from:
+When the 7-day scan gate is due, load known boards from:
 
 ```bash
 config/greenhouse_boards.yml
@@ -53,6 +54,7 @@ curl "https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true"
 - Skip boards whose `last_active` is older than 30 days unless the token was newly discovered in this run.
 - Do not delete stale or inactive boards.
 - For dynamically discovered tokens, add or update the board entry only after the token validates with `200`.
+- After a full board scan completes, run `python3 scripts/run_state.py mark last_greenhouse_board_scan_at`.
 
 ## Primary API Workflow
 
@@ -138,18 +140,21 @@ Do not write per job. Always flush the accumulated batch before returning, inclu
 
 ## Run Order
 
-1. Read `config/greenhouse_boards.yml`.
-2. Merge in any Greenhouse board tokens found from LinkedIn/Naukri external links.
-3. Validate active or newly discovered tokens with public `curl`.
-4. Skip boards stale for more than 30 days unless newly discovered.
-5. Fetch jobs with `content=true`, respecting 4 `curl` calls per board.
-6. Parse jobs and score upfront.
-7. Extract title plus top 3 JD keywords for each score `>= 4` job.
-8. Dedupe with `python3 scripts/db.py list`.
-9. Pick resume with `python3 scripts/pick_resume.py`.
-10. Apply through `absolute_url` by invoking `generic-apply`.
-11. Update board `last_active` for boards with qualifying jobs; mark 404 boards `active: false`; do not delete boards.
-12. Batch log all successful applications once with `db_batch_insert.py --apps`.
+1. Run `python3 scripts/run_state.py greenhouse-due`.
+2. If it prints `skip until YYYY-MM-DD`, do not scan boards; report the skipped-scan reason and optionally process queued Greenhouse pipeline jobs.
+3. If due, read `config/greenhouse_boards.yml`.
+4. Merge in any Greenhouse board tokens found from LinkedIn/Naukri external links.
+5. Validate active or newly discovered tokens with public `curl`.
+6. Skip boards stale for more than 30 days unless newly discovered.
+7. Fetch jobs with `content=true`, respecting 4 `curl` calls per board.
+8. Parse jobs and score upfront.
+9. Extract title plus top 3 JD keywords for each score `>= 4` job.
+10. Dedupe with `python3 scripts/db.py list`.
+11. Pick resume with `python3 scripts/pick_resume.py`.
+12. Apply through `absolute_url` by invoking `generic-apply`.
+13. Update board `last_active` for boards with qualifying jobs; mark 404 boards `active: false`; do not delete boards.
+14. Run `python3 scripts/run_state.py mark last_greenhouse_board_scan_at` after the board scan.
+15. Batch log all successful applications once with `db_batch_insert.py --apps`.
 
 ## Output Format
 
@@ -170,4 +175,9 @@ Do not write per job. Always flush the accumulated batch before returning, inclu
 | Token | Status | Change |
 |-------|--------|--------|
 | ...   | active | last_active updated |
+
+### Skipped scans
+| Source | Reason |
+|--------|--------|
+| Greenhouse boards | last scanned YYYY-MM-DD, next eligible YYYY-MM-DD |
 ```

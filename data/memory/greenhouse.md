@@ -13,6 +13,8 @@ Persistent operational memory for Greenhouse-hosted job discovery and applicatio
 ## Board Registry Notes
 
 - Source of truth: `config/greenhouse_boards.yml`.
+- Full board scans are throttled by `data/run-state.json` and run at most once every 7 days.
+- On non-scan days, process already queued Greenhouse pipeline jobs only if browser permissions and budget allow.
 - Mark 404 boards as `active: false`.
 - Update `last_active` when a board returns qualifying jobs.
 - Skip stale boards older than 30 days, but do not delete them.

@@ -130,7 +130,7 @@ For application inserts during agent runs, collect rows in memory and write once
 
 ## Browser Workflow
 
-Use Claude-in-Chrome MCP browser tools for Gmail, Instahyre, LinkedIn, and Naukri.
+Use Claude-in-Chrome MCP browser tools for Gmail, Instahyre, LinkedIn, and external apply forms. Naukri browser work is manual troubleshooting only; nightly Naukri uses the NopeRi adapter.
 
 1. Prefer already-open tabs for each domain.
 2. If no tab group exists, create one and navigate the tab.
@@ -159,10 +159,26 @@ The nightly run is long. Follow these to cut tool calls and token usage:
 
 ## Status Handling
 
-Gmail is only for reading status signals. Search recent mail for:
+Gmail is the only nightly status source. Portal status checks for Instahyre,
+Naukri, and LinkedIn are manual or weekly/on-demand only. Before searching,
+read the incremental window:
+
+```bash
+python3 scripts/run_state.py gmail-after
+```
+
+Search Gmail with that date:
 
 ```text
-subject:(application OR interview OR offer OR rejection OR shortlisted OR regret OR assessment) newer_than:7d
+subject:(application OR interview OR offer OR rejection OR shortlisted OR regret OR assessment) after:YYYY/MM/DD
+```
+
+For every message examined, log its Gmail message ID so future status checks do
+not repeat the same finding:
+
+```bash
+python3 scripts/db.py log-gmail --message-id "ID" --sender "S" --subject "SUBJ" --action status_updated
+python3 scripts/run_state.py mark last_gmail_status_scan_at
 ```
 
 Update DB statuses for clear outcomes:
@@ -180,10 +196,10 @@ Recruiter replies, assessments, interview scheduling, salary questions, or any e
 
 Run stages in this order:
 
-1. `STATUS`: Gmail status scan, Instahyre Activity responses.
+1. `STATUS`: incremental Gmail status scan only.
 2. `ACTION`: DB updates only; collect human-needed items.
-3. `SCAN`: Instahyre matching jobs, Naukri jobs, LinkedIn jobs (role-anchored keyword matrix; include Easy Apply AND external-apply jobs), and Greenhouse jobs from `config/greenhouse_boards.yml`. Greenhouse scan uses the public API and does not need a browser.
-4. `APPLY`: Instahyre target ~15, Naukri target ~15, LinkedIn target 15+, Greenhouse target 10. All platforms choose cached PDFs per job; tune at most 3 fresh markdown resume variants across the run only when `pick_resume.py` returns `TUNE` and the JD justifies it. Greenhouse uses `generic-apply` after API scoring.
+3. `SCAN`: Instahyre matching jobs, Naukri jobs through `scripts/naukri_noperi_apply.py`, and Greenhouse jobs only when `python3 scripts/run_state.py greenhouse-due` returns `due`. Do not run a LinkedIn scan unless prior platforms leave budget.
+4. `APPLY`: Naukri target ~15 through NopeRi only, Instahyre target ~15, LinkedIn fallback 3-5 Easy Apply jobs only, Greenhouse queued jobs or weekly board scan target 10. All platforms choose cached PDFs per job; tune at most 3 fresh markdown resume variants across the run only when `pick_resume.py` returns `TUNE` and the JD justifies it. Greenhouse uses `generic-apply` after API scoring.
 5. `LOG`: write run log and print DB summary.
 
 ## Final Report Format
@@ -192,11 +208,12 @@ Run stages in this order:
 Nightly run YYYY-MM-DD:
   Instahyre: X applied, Y skipped (low score)
   Naukri: X applied, Y skipped (low score)
-  LinkedIn: A applied (A1 Easy Apply + A2 external company-site), B saved to pipeline (login/CAPTCHA blocked)
+  LinkedIn: A Easy Apply applied, B saved/skipped
   Greenhouse: X applied
   Status updates: C
   Resumes: D reused from cache, E newly tuned
   Total in DB: N applications
+  Skipped scans: Greenhouse board scan skipped: last scanned YYYY-MM-DD, next eligible YYYY-MM-DD
 
 Action needed (handle yourself):
   - [Company]: [assessment / recruiter reply / interview slot / salary question]
