@@ -1,7 +1,7 @@
 ---
 name: generic-apply
 description: This skill should be used when applying to external company careers pages or ATS portals such as Greenhouse, Lever, Workday, SmartRecruiters, Workable, or unknown job application forms.
-version: 1.1.1
+version: 1.1.2
 ---
 
 # Generic Job Application Skill
@@ -28,17 +28,25 @@ Apply to any external job portal. Called by the LinkedIn skill for external-appl
 | Work authorization India | Read from `profile.md` |
 | LinkedIn URL | Read from `profile.md` |
 | GitHub URL | Read from `profile.md` |
+| Street | `B-7/8 Mianwali Nagar, New Delhi` (from `profile.md` Identity And Contact) |
+| City | `New Delhi` |
+| Postcode | `110087` |
+| Country | `India` |
 
 ## ATS credentials (for account creation / login walls)
 
-Read from `.env` at the start of each run:
+Email: `parikshit.p2002@gmail.com` (from `profile.md`)
 
-```bash
-ATS_EMAIL=parikshit.p2002@gmail.com
-ATS_PASSWORD=  # read from .env — never hard-code here
-```
+Password for new account creation: generate a strong password using the pattern `<SiteAbbrev>@Pk#<YYYY>` (e.g. `Tesc0@Pk#2026`). Rules:
+- Min 12 chars, mix upper/lower/digit/symbol
+- Never reuse across sites — vary the site abbreviation prefix
+- After creating the account, save the password in the DB notes for that application:
+  ```bash
+  python3 scripts/db.py update-status --company "X" --role "Y" --platform "Z" \
+    --status Applied --notes "account: parikshit.p2002@gmail.com pwd=<generated>"
+  ```
 
-Use these only for Workday, Lever, Greenhouse, SmartRecruiters, Workable, and unknown portal login/account creation walls. Never enter these on phishing-suspected pages or non-ATS sites.
+Use credentials only for legitimate ATS portals (careers.*, greenhouse.io, lever.co, workday.com, smartrecruiters.com, workable.com). Never enter on phishing-suspected pages.
 
 ## Resume variants
 | Role type | PDF |
@@ -137,8 +145,10 @@ When a login/account creation wall appears on any platform:
    - Password: `ATS_PASSWORD` from `.env`
    - Fill and submit the login form.
 4. If login says "no account found" or "create account" → look for "Sign up" / "Create account" link.
-   - Register with same `ATS_EMAIL` + `ATS_PASSWORD`.
+   - Register with `parikshit.p2002@gmail.com` + a generated password (see ATS credentials section above).
+   - Fill address fields from profile (Street, City, Postcode, Country).
    - If the registration sends an email verification link → open a new tab, navigate to Gmail (`mail.google.com`), find the verification email, click the link, return to the form.
+   - After account creation, save the generated password to DB notes (see ATS credentials section).
    - After account creation, continue filling the form from Step 3.
 5. If the registration/login flow requires an OTP sent to email → open Gmail tab → find OTP → enter it → continue.
 6. If only CAPTCHA, phone verification, LinkedIn-only, or an OTP to a phone number is required → skip, save URL to `data/pipeline.md` with reason.

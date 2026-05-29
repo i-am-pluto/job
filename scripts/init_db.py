@@ -7,6 +7,7 @@ Safe to run multiple times — uses CREATE IF NOT EXISTS.
 import sqlite3
 import os
 from datetime import datetime
+from init_networking_db import migrate_networking
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "applications.db")
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
@@ -79,6 +80,8 @@ def init():
     except sqlite3.OperationalError as exc:
         if "duplicate column name" not in str(exc).lower():
             raise
+
+    migrate_networking(cur)
 
     con.commit()
     con.close()

@@ -36,14 +36,17 @@ output/
 skills/
   instahyre/SKILL.md    Instahyre scan + one-click apply
   linkedin/SKILL.md     LinkedIn jobs: Easy Apply + external company-site apply
+  networking/SKILL.md   LinkedIn post scan, connect, accepted-detect, referral message
   generic-apply/SKILL.md external portals such as Greenhouse/Lever/Workday
   resume-tuner/SKILL.md tune a resume for a specific JD
 
 scripts/
   db.py                 application DB helper
+  db_networking.py      LinkedIn networking outreach DB helper
   pick_resume.py        deterministic cached resume picker
   resume_pdf.py         markdown resume -> PDF
   init_db.py            create/migrate SQLite schema
+  init_networking_db.py create/migrate networking outreach schema
 
 data/
   applications.db       source of truth for applications and run logs
@@ -156,6 +159,9 @@ The nightly run is long. Follow these to cut tool calls and token usage:
 12. **LinkedIn synthetic clicks fail:** `element.click()` does NOT open the Easy Apply modal (it's an `<a>` wrapping a span). Use `mcp__Claude_in_Chrome__computer.left_click` with coordinates from a screenshot or `ref` from `find()`. Plan ~6-8 tool calls per LinkedIn Easy Apply — they are NOT cheap. If Instahyre target met, deferring LinkedIn is acceptable; save URLs to `data/pipeline.md`.
 13. **LinkedIn "Save this application?" interstitial appears every Easy Apply click** (LinkedIn caches drafts forever). Click the `×` icon on the popup card (NOT Discard, NOT Save) — that closes the popup but keeps the underlying Easy Apply modal open at Contact step. Discard closes both.
 14. **LinkedIn lazy-load:** `li[data-occludable-job-id]` cards beyond index 6 don't populate via JS scroll. Use real `computer.scroll` or rotate keywords accepting ~7 cards per query.
+15. **Click targeting without screenshots:** Use `read_page(filter="interactive")` to enumerate all clickable elements with `ref_id` values, then pass `ref` directly to `computer.left_click` or `scroll_to`. Faster and cheaper than taking a screenshot to find coordinates.
+16. **Vimium shortcuts don't work via MCP:** CDP key injection (used by `computer.key`) bypasses Vimium's content-script event listeners — pressing `f`, `?`, or any Vimium hotkey has no effect. Do not attempt to use Vimium as a navigation aid. Use `find()` + `ref` or `read_page(filter="interactive")` instead.
+17. **`computer.key` blocked on Instahyre tabs:** Instahyre tabs throw `Cannot access a chrome-extension:// URL of different extension` for both `computer.key` and `javascript_tool`. When this happens, fall back to `computer.left_click` with coordinates from a prior screenshot, or use `find()` + `ref` click.
 
 ## Status Handling
 

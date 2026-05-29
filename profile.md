@@ -8,6 +8,10 @@ This file is the source of truth for job-search preferences, application form an
 - Email: parikshit.p2002@gmail.com
 - Phone: +91 95603 07106
 - Location: Delhi, India
+- Street: B-7/8 Mianwali Nagar, New Delhi
+- City: New Delhi
+- Postcode: 110087
+- Country: India
 - LinkedIn: linkedin.com/in/parikshit-dabas
 - GitHub: github.com/parikshit-dabas
 
