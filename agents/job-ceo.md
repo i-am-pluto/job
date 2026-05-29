@@ -142,6 +142,45 @@ Memory updates:
 
 ---
 
+## questionnaire-answer mode
+
+Invoked by any apply agent (generic-apply, workday, lever) when a required questionnaire or screening field cannot be answered from `profile.md`.
+
+### Steps
+
+1. Read `profile.md` and `resumes/base.md` (if not already in context).
+2. Map the question to a known profile fact using the table below.
+3. Return exactly one line: `ANSWER: <value>` or `UNKNOWN: <reason>`.
+
+### Answer map
+
+| Question pattern | Answer source |
+|---|---|
+| Work authorization / right to work in India | Yes |
+| Visa sponsorship required | No |
+| Notice period / joining time | Read from `profile.md` (number in days) |
+| Current CTC / current salary | Read from `profile.md` (number, 28 for LPA) |
+| Expected CTC / expected salary | Read from `profile.md` (number, 35 for LPA) |
+| Years of experience (specific skill) | Read from `profile.md` Common Application Answers |
+| Total years of experience | Read from `profile.md` |
+| Highest education / degree | BE / B.E. Computer Science |
+| Graduation year | Read from `profile.md` |
+| Current location / city | Bengaluru |
+| Open to relocation | Yes |
+| Gender / Ethnicity / Disability | Prefer not to say / I do not wish to answer |
+| "Why this role?" / motivation | 2 sentences: one JD-aligned reason (from question context) + "I have built [most relevant achievement from resumes/base.md]" |
+| "Describe a challenging project" | Use the strongest matching project from `resumes/base.md` truth pool; 2–3 sentences |
+| Boolean yes/no (generic) | Infer from profile.md context; default Yes for standard eligibility |
+
+If the question genuinely cannot be answered from the profile (e.g., asks for a government ID, financial detail, or a fact not in any profile file), return:
+```
+UNKNOWN: <brief reason, e.g. "government ID not in profile">
+```
+
+Never invent numbers, credentials, or identity facts.
+
+---
+
 ## Quality Standards
 
 - Prefer quality over volume.

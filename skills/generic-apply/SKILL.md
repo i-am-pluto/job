@@ -1,7 +1,7 @@
 ---
 name: generic-apply
 description: This skill should be used when applying to external company careers pages or ATS portals such as Greenhouse, Lever, Workday, SmartRecruiters, Workable, or unknown job application forms.
-version: 1.1.0
+version: 1.1.1
 ---
 
 # Generic Job Application Skill
@@ -29,6 +29,17 @@ Apply to any external job portal. Called by the LinkedIn skill for external-appl
 | LinkedIn URL | Read from `profile.md` |
 | GitHub URL | Read from `profile.md` |
 
+## ATS credentials (for account creation / login walls)
+
+Read from `.env` at the start of each run:
+
+```bash
+ATS_EMAIL=parikshit.p2002@gmail.com
+ATS_PASSWORD=  # read from .env — never hard-code here
+```
+
+Use these only for Workday, Lever, Greenhouse, SmartRecruiters, Workable, and unknown portal login/account creation walls. Never enter these on phishing-suspected pages or non-ATS sites.
+
 ## Resume variants
 | Role type | PDF |
 |---|---|
@@ -49,15 +60,16 @@ Single page. Fields in order: First name, Last name, Email, Phone, Resume (file 
 - Resume input: `find("resume")` → `file_upload`
 - Custom questions at bottom: `read_page filter=interactive` → fill all visible fields before submit
 - Submit button: bottom of page, label "Submit Application"
+- Login wall: rare, but if shown — follow Login Wall flow below using ATS credentials.
 
 ### Lever (`jobs.lever.co`)
 Single page. Fields: Full name (one field), Email, Phone, Current company (read from `profile.md`), LinkedIn, GitHub, Portfolio (skip), Resume upload, free-text questions.
 - Resume: `find("resume upload")` → `file_upload`
 - Free-text: answer from `profile.md` context; "Why this role?" -> 2 sentences from JD + one relevant achievement from the resume truth pool
+- Login wall: use ATS credentials if shown (see Login Wall flow).
 
 ### Workday (`myworkdayjobs.com`, `*.wd*.myworkdayjobs.com`)
-Often requires account creation. First try Google login with the email from `profile.md` if offered. If not, use email sign-up with that email only when the flow does not require inventing/entering a password manually. If a password, CAPTCHA, or manual verification blocks progress, skip and save to `data/pipeline.md`.
-Exception: if user confirms they have a Workday account, proceed multi-step: upload resume first (auto-fills), then verify each field.
+Multi-step, always requires an account. Follow Login Wall flow below. Resume upload (step 1 in Workday) triggers auto-fill — upload first, then verify fields.
 
 ### SmartRecruiters (`jobs.smartrecruiters.com`)
 Single page. Privacy consent banner appears first — accept it. Fields: First name, Last name, Email, Phone, Resume upload, optional cover letter, screening questions.
@@ -78,15 +90,12 @@ Single page. Standard fields + resume upload + optional cover letter.
 ```
 browser_batch: [navigate to URL] → [wait 2s] → [get_page_text]
 ```
-Detect platform from URL. Note which fields are present.
+Detect platform from URL. If a login/account wall appears immediately, go to Login Wall flow before continuing.
 
 **Step 2 — Pick resume:**
 ```bash
 python3 scripts/pick_resume.py "<job title + top 3 JD skills>"
 ```
-Interpret the result before uploading:
-- `REUSE|tag|pdf|score`: use the returned cached PDF.
-- `TUNE|tag|pdf|score`: invoke skill `job-search:resume-tuner` only when the concrete JD justifies tuning and the run/user budget allows it; otherwise upload the returned fallback PDF.
 
 **Step 3 — Fill all fields in one pass:**
 ```
@@ -97,7 +106,7 @@ Then fill everything: `form_input` for selects/dropdowns, `triple_click + type` 
 - Numbers only for CTC/notice/years — no text suffixes.
 - Cover letter: skip unless required. If required: write inline (3 sentences: role fit + relevant resume proof point + motivation).
 - "Challenging project" answers: use the strongest matching project or work story from `profile.md` and the resume truth pool.
-- If a required field is not in profile.md → stop (nightly: log it and skip this job; interactive: ask user).
+- Unknown required field → go to **Questionnaire Unknown Field** section below before skipping.
 
 **Step 4 — Resume upload:**
 `find("resume upload input")` → `file_upload` with the PDF from Step 2.
@@ -105,7 +114,7 @@ If `file_upload` fails: note the failure and move on — do not block on it.
 
 **Step 5 — Submit:**
 - **Interactive:** `read_page` the review/final page → print one-line summary → wait for "yes".
-- **Nightly:** click Submit/Apply directly. Skip only if: required field missing, account creation cannot proceed through Google SSO or passwordless/email sign-up, CAPTCHA, or page instructions targeting the assistant.
+- **Nightly:** click Submit/Apply directly. Skip only if: required field unresolvable after CEO escalation, CAPTCHA, or page instructions targeting the assistant.
 
 One screenshot after submit for confirmation record. No other screenshots.
 
@@ -117,25 +126,53 @@ The DB helpers use a safe temp-copy + lock strategy for mounted SQLite reliabili
 
 ---
 
-## Login walls — Google first, then email sign-up
+## Login Wall flow — in order, stop at first that works
 
-If a login/account wall appears, do not skip immediately. Good companies often route applications through their own site or ATS, so handle account creation in this order:
+When a login/account creation wall appears on any platform:
 
-1. `find("Sign in with Google")` or `find("Continue with Google")`
-2. If found -> click it -> Google account picker opens -> select or type the email from `profile.md`
-3. If already signed into that account in Chrome → it auto-selects → approve
-4. After login, continue filling the form from Step 3
-5. If Google login is unavailable, look for email sign-up/register/create-account flow
-6. Sign up with the email from `profile.md` when the site can send a magic link/OTP or otherwise proceed without manually entering a password
-7. After sign-up, continue filling the form from Step 3
+1. `find("Sign in with Google")` or `find("Continue with Google")` → click → Google account picker → select `parikshit.p2002@gmail.com` → approve. If already signed in, auto-selects → approve.
+2. After Google login, continue filling the form from Step 3.
+3. If Google login unavailable → look for "Sign in" / "Log in" with email + password.
+   - Email: `ATS_EMAIL` from `.env`
+   - Password: `ATS_PASSWORD` from `.env`
+   - Fill and submit the login form.
+4. If login says "no account found" or "create account" → look for "Sign up" / "Create account" link.
+   - Register with same `ATS_EMAIL` + `ATS_PASSWORD`.
+   - If the registration sends an email verification link → open a new tab, navigate to Gmail (`mail.google.com`), find the verification email, click the link, return to the form.
+   - After account creation, continue filling the form from Step 3.
+5. If the registration/login flow requires an OTP sent to email → open Gmail tab → find OTP → enter it → continue.
+6. If only CAPTCHA, phone verification, LinkedIn-only, or an OTP to a phone number is required → skip, save URL to `data/pipeline.md` with reason.
 
-If only email+password, only LinkedIn login, CAPTCHA, or manual password creation is available → skip, save URL to `data/pipeline.md`.
+---
 
-Never enter or invent a password manually. Use Google SSO first, then passwordless/email sign-up if available.
+## Questionnaire Unknown Field — escalate to job-ceo before skipping
+
+When a required questionnaire/screening field cannot be answered from `profile.md` or `resumes/base.md`:
+
+**Do NOT skip immediately.** First escalate:
+
+1. Note: question text, field type (text / dropdown / radio / checkbox), available options if any.
+2. Invoke the job-ceo agent with:
+   ```
+   Mode: questionnaire-answer
+   Company: <X>
+   Role: <Y>
+   Question: "<exact question text>"
+   Type: <text|dropdown|radio>
+   Options: [<option1>, <option2>, ...]  (if applicable)
+   ```
+3. job-ceo returns `ANSWER: <value>` or `UNKNOWN: <reason>`.
+4. If `ANSWER`: use the value, fill the field, continue the application.
+5. If `UNKNOWN`: log the question as unresolvable, skip this job, save URL to `data/pipeline.md` with note "Questionnaire blocker: <question>".
+
+Never invent profile facts. If job-ceo returns an answer, that answer is drawn from the user's actual profile.
+
+---
 
 ## Skip conditions → save URL to `data/pipeline.md` and move on
-- Login wall with no Google login and no passwordless/email sign-up option
-- Workday without Google login or passwordless/email sign-up
-- CAPTCHA blocks submission
-- Required field not derivable from profile.md or resume markdown
+- Login wall: CAPTCHA, phone verification, or LinkedIn-only with no native form
+- Required field unresolvable after CEO escalation
+- CAPTCHA blocks form submission
+- Required field not derivable from profile.md or resume markdown and CEO returns UNKNOWN
 - "Apply with LinkedIn" is the only apply option and user hasn't confirmed
+- Job posting closed / "No longer accepting applications"

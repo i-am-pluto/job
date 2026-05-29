@@ -1,15 +1,15 @@
 ---
 name: workday
-description: This skill should be used when applying to jobs on Workday ATS (myworkdayjobs.com, *.wd*.myworkdayjobs.com). Handles multi-step flow, resume auto-fill, Google SSO or email sign-up, and DB logging. Skips if password or CAPTCHA is required.
-version: 1.0.0
+description: This skill should be used when applying to jobs on Workday ATS (myworkdayjobs.com, *.wd*.myworkdayjobs.com). Handles multi-step flow, resume auto-fill, Google SSO, email+password account creation, and DB logging.
+version: 1.1.0
 ---
 
 # Workday Job Application Skill
 
-Apply to jobs on Workday-hosted career pages. Multi-step flow with resume auto-fill. Requires account — try Google SSO first, then email sign-up; skip if only password works.
+Apply to jobs on Workday-hosted career pages. Multi-step flow with resume auto-fill. Always requires an account — try Google SSO first, then email+password login or account creation using ATS credentials from `.env`.
 
 **Trigger:** `myworkdayjobs.com` URL, `*.wd*.myworkdayjobs.com` URL, "apply on Workday", company career page backed by Workday.
-**Mode:** Interactive → stop before final submit. Nightly (`nightly-job-apply`) → submit autonomously within quota; skip on login wall if no Google/passwordless option.
+**Mode:** Interactive → stop before final submit. Nightly (`nightly-job-apply`) → submit autonomously within quota.
 
 ---
 
@@ -23,12 +23,18 @@ Apply to jobs on Workday-hosted career pages. Multi-step flow with resume auto-f
 
 ## Authentication flow (in order — stop at first that works)
 
-1. **Google SSO:** `find("Sign in with Google")` or `find("Continue with Google")` → click → select email from `profile.md` in the account picker → approve. Continue to form.
-2. **Email sign-up / magic link:** Look for "Create account", "Sign up", "Get started" → use email from `profile.md` → complete email-only verification (magic link or OTP to that inbox). Continue to form.
-3. **Passwordless / LinkedIn login:** If available and user has pre-authorized, use it.
-4. **Stop:** If only password entry, LinkedIn-only, or CAPTCHA → save URL to `data/pipeline.md` with note "Workday login required" and skip.
+1. **Google SSO:** `find("Sign in with Google")` or `find("Continue with Google")` → click → select `parikshit.p2002@gmail.com` in the account picker → approve. If already signed in, auto-selects → approve. Continue to form.
+2. **Email + password login:** Look for "Sign in" with email and password fields.
+   - Email: `ATS_EMAIL` from `.env`
+   - Password: `ATS_PASSWORD` from `.env`
+   - Fill and submit.
+3. **Account creation:** If login says "no account" or offers a "Create account" / "Sign up" link:
+   - Register with `ATS_EMAIL` + `ATS_PASSWORD` from `.env`.
+   - If email verification required → open Gmail tab (`mail.google.com`) → find Workday verification email → click verification link → return to Workday.
+   - If OTP sent to email → open Gmail tab → copy OTP → enter it → continue.
+4. **Stop:** Only skip if CAPTCHA or phone-number verification is required → save URL to `data/pipeline.md` with note "Workday: CAPTCHA or phone verification required".
 
-Never invent or enter a password. Never use "Apply with LinkedIn" unless explicitly authorized.
+Never use a password not stored in `.env`. Never enter phone numbers or government IDs.
 
 ---
 
@@ -40,7 +46,7 @@ Workday is multi-step. Each step is a scrollable panel — scroll to reveal all 
 ```
 browser_batch: [navigate to URL] → [wait 3s] → [get_page_text]
 ```
-Confirm Workday page. If "Sign In" or account wall appears → run Authentication flow above.
+Confirm Workday page. If "Sign In" or account wall appears → run Authentication flow above before continuing.
 
 **Step 2 — Resume upload (do this first — triggers auto-fill):**
 ```
@@ -59,13 +65,14 @@ Common Workday steps in order:
    - Notice period: read from `profile.md` (days, number only)
    - Years of experience: read from `profile.md` Common Application Answers
    - Current CTC / Expected CTC: read from `profile.md` (number only, no units)
+   - Unknown required field → **Questionnaire Unknown Field** escalation below.
 4. **Voluntary Disclosures** — Gender, Ethnicity, Disability, Veteran status → "Prefer not to say" / "I do not wish to answer" for all.
 5. **Review** — Confirm all sections, then submit.
 
 **Step 4 — Navigation between steps:**
 - `find("Next")` or `find("Save and Continue")` → click → wait 2s → `get_page_text` to detect next step.
 - Do NOT screenshot between steps — use `get_page_text` or `read_page filter=interactive`.
-- If a required field is missing from profile.md → stop (nightly: log + skip; interactive: ask user).
+- If a required field is missing from profile.md → escalate to CEO before skipping (see below).
 
 **Step 5 — Submit:**
 - Interactive: `read_page` the review step → print one-line summary → wait for "yes".
@@ -74,8 +81,30 @@ Common Workday steps in order:
 
 **Step 6 — Log:**
 ```bash
-python3 scripts/db_batch_insert.py --apps '[{"company":"X","role":"Y","platform":"workday","score":N,"status":"Applied","location":"L","notes":"Workday multi-step apply; resume Z.pdf; Google SSO used"}]'
+python3 scripts/db_batch_insert.py --apps '[{"company":"X","role":"Y","platform":"workday","score":N,"status":"Applied","location":"L","notes":"Workday multi-step apply; resume Z.pdf; Google SSO / email+password used"}]'
 ```
+
+---
+
+## Questionnaire Unknown Field — escalate to job-ceo before skipping
+
+When a required field cannot be answered from `profile.md` or `resumes/base.md`:
+
+**Do NOT skip immediately.** First escalate:
+
+1. Note: question text, field type (text / dropdown / radio / checkbox), available options if any.
+2. Invoke the job-ceo agent with:
+   ```
+   Mode: questionnaire-answer
+   Company: <X>
+   Role: <Y>
+   Question: "<exact question text>"
+   Type: <text|dropdown|radio>
+   Options: [<option1>, <option2>, ...]  (if applicable)
+   ```
+3. job-ceo returns `ANSWER: <value>` or `UNKNOWN: <reason>`.
+4. If `ANSWER`: use the value, fill the field, continue the application.
+5. If `UNKNOWN`: log the question, skip this job, save URL to `data/pipeline.md` with note "Questionnaire blocker: <question>".
 
 ---
 
@@ -94,8 +123,8 @@ python3 scripts/db_batch_insert.py --apps '[{"company":"X","role":"Y","platform"
 
 - Score < 4 per `profile.md`
 - Already applied (dedupe check)
-- Login wall with password only, CAPTCHA, or no Google/passwordless option
+- CAPTCHA or phone verification required during account creation
 - Job posting closed / "No longer accepting applications"
-- Required field not in profile.md and cannot be inferred
+- Required field unresolvable after CEO escalation
 
 Save blocked URLs with reason to `data/pipeline.md`.

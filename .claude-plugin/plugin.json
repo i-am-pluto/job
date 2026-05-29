@@ -1,6 +1,6 @@
 {
   "name": "job-search",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "Automated job application system for Instahyre, LinkedIn, Naukri, Lever, Workday, and external ATS workflows.",
   "author": {
     "name": "i-am-pluto",
