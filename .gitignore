@@ -1,3 +1,7 @@
+# Credentials — never commit
+.env
+.env.local
+
 # Personal data (user fills these)
 data/pipeline.md
 output/*

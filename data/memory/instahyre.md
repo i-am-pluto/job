@@ -32,6 +32,11 @@ Keep durable Instahyre selectors, popup behavior, and run learnings here. Do not
 - "No thanks, I want to continue as non-premium" link for premium popup.
 - Startup: page shows "Fetching" briefly on load; wait for Instahyre DOM to populate before scanning cards.
 
+## Queue Exhaustion Pattern
+
+- 2026-05-28 (run 3 — second session): After 25 applications submitted in the same day's earlier sessions, the `matching=true` (Undecided) queue shows "No matching opportunities found :( Undecided (0)". This is normal — Instahyre refreshes the matching queue asynchronously. No rate-limit or cap error; queue is simply empty. No further applications possible in same-day session.
+- When the Undecided queue is empty and the quota is not met, do NOT attempt to apply from the Interested queue — those are already-seen/previously-decided cards that would be duplicates.
+
 ## Avoid Rules Confirmed
 
 - Skip any card showing 5+ year minimum (e.g. "5 - 9 years") — confirmed Infosys Java Developer Guwahati.

@@ -1,7 +1,7 @@
 ---
 name: job-ceo
 description: Use this agent when orchestrating the user's job-search system across Naukri, Instahyre, LinkedIn, external company-site applications, status review, nightly run summaries, milestones, platform success rates, memory updates, and resume strategy coordination. Typical triggers include running nightly-job-apply, asking for job-search status, assigning platform quotas, and reviewing what agents should improve. See "When to invoke" in the agent body for worked scenarios.
-model: haiku
+model: inherit
 color: blue
 ---
 

@@ -2,60 +2,100 @@ boards:
   - company: Stripe
     token: stripe
     added_by: seed
+    last_active: "2026-05-28"
   - company: Airbnb
     token: airbnb
     added_by: seed
+    last_active: "2026-05-28"
   - company: Databricks
     token: databricks
     added_by: seed
+    last_active: "2026-05-28"
   - company: Chime
     token: chime
     added_by: seed
+    last_active: "2026-05-28"
   - company: Coinbase
     token: coinbase
     added_by: seed
+    last_active: "2026-05-28"
   - company: Discord
     token: discord
     added_by: seed
+    last_active: "2026-05-28"
   - company: Figma
     token: figma
     added_by: seed
+    last_active: "2026-05-28"
   - company: Grammarly
     token: grammarly
     added_by: seed
+    active: false
   - company: Instacart
     token: instacart
     added_by: seed
+    last_active: "2026-05-28"
   - company: LaunchDarkly
     token: launchdarkly
     added_by: seed
+    last_active: "2026-05-28"
   - company: Lyft
     token: lyft
     added_by: seed
+    last_active: "2026-05-28"
   - company: Notion
     token: notion
     added_by: seed
+    active: false
   - company: Plaid
     token: plaid
     added_by: seed
+    active: false
   - company: Ramp
     token: ramp
     added_by: seed
+    active: false
   - company: Rippling
     token: rippling
     added_by: seed
+    active: false
   - company: Samsara
     token: samsara
     added_by: seed
+    last_active: "2026-05-28"
   - company: Segment
     token: segment
     added_by: seed
+    active: false
   - company: Toast
     token: toast
     added_by: seed
+    last_active: "2026-05-28"
   - company: Vercel
     token: vercel
     added_by: seed
+    last_active: "2026-05-28"
   - company: Webflow
     token: webflow
     added_by: seed
+    last_active: "2026-05-28"
+  - company: Degreed
+    token: degreed
+    added_by: ceo-refresh
+    last_active: "2026-05-28"
+  - company: HackerRank
+    token: hackerrank
+    added_by: ceo-refresh
+    last_active: "2026-05-28"
+  - company: PhonePe
+    token: phonepe
+    added_by: ceo-refresh
+    last_active: "2026-05-28"
+  - company: Grafana Labs
+    token: grafanalabs
+    added_by: ceo-refresh
+    last_active: "2026-05-28"
+  - company: Razorpay
+    token: razorpaysoftwareprivatelimited
+    added_by: ceo-refresh
+    last_active: "2026-05-28"
