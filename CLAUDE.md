@@ -68,7 +68,8 @@ When the user is present in the chat:
 When running `nightly-job-apply`, the user has authorized autonomous application submission:
 
 1. Apply directly on Instahyre for fitting jobs.
-2. For LinkedIn jobs: submit Easy Apply, AND for jobs whose `Apply` button redirects to the company's own site/ATS, follow it and submit via the generic-apply skill. Do not skip a job just because it is not Easy Apply.
+2. For LinkedIn jobs: submit Easy Apply by default. Follow external/company-site
+   redirects only when the user or CEO explicitly assigns external LinkedIn budget.
 3. Still obey all quality, duplicate, safety, and logging rules.
 4. Do not ask questions; make reasonable choices and record assumptions in the run log.
 
@@ -129,7 +130,13 @@ python3 scripts/db_batch_insert.py --apps '[{"company":"X","role":"Y","platform"
 python3 scripts/db_batch_insert.py --log-run --instahyre 10 --linkedin 5 --status-updates 2 --summary "..."
 ```
 
-For application inserts during agent runs, collect rows in memory and write once with `db_batch_insert.py --apps`; it also writes initial `status_history` rows. `db.py add` is only for manual one-off repairs. For status updates, Gmail logs, duplicate checks, and summaries, use `db.py`. For nightly run logs, prefer `db_batch_insert.py --log-run`. If a DB command fails, report the error and continue the browser work. Do not let a tracking failure block applications.
+For application inserts during agent runs, collect rows in memory and write with
+`db_batch_insert.py --apps` at the cadence specified by the platform skill; it
+also writes initial `status_history` rows. `db.py add` is only for manual one-off
+repairs. For status updates, Gmail logs, duplicate checks, and summaries, use
+`db.py`. For nightly run logs, prefer `db_batch_insert.py --log-run`. If a DB
+command fails, report the error and continue the browser work. Do not let a
+tracking failure block applications.
 
 ## Browser Workflow
 
@@ -149,7 +156,7 @@ The nightly run is long. Follow these to cut tool calls and token usage:
 2. Reading pages: prefer `get_page_text` / `read_page` over `screenshot`. A screenshot is an image (~1.5k tokens); page text is far cheaper. Only screenshot when text genuinely fails to show what is needed, and then once — not repeatedly.
 3. Score ALL job cards from a single `read_page` BEFORE opening anything. This produces the full ordered apply/skip plan upfront — no re-reading.
 4. Always use `browser_batch` to group click + wait + read into one round trip. Never one browser action per call.
-5. DB writes: collect all applications in memory and write them in ONE batched command at the LOG stage, not one `db.py add` per job.
+5. DB writes: collect applications in memory and flush with `db_batch_insert.py --apps` at the platform skill's cadence, not with one `db.py add` per job.
 6. DB on this mount can throw `sqlite3.OperationalError: disk I/O error` when SQLite writes directly. The DB helpers now serialize writes through a temp-copy + lock strategy. Use only `python3 scripts/db.py ...` and `python3 scripts/db_batch_insert.py ...`; never run raw SQLite writes or retry per row.
 7. Do not re-screenshot to "verify" something a prior tool result already confirmed (toast text, "Applied" label, navigation result).
 8. **`get_page_text` lies about popup visibility** — it returns ALL DOM content including hidden elements. Always use JavaScript `el.offsetParent !== null` to check if an element is truly visible on screen.

@@ -28,7 +28,7 @@ class NetworkingOrchestrationDocsTests(unittest.TestCase):
     def test_plugin_version_bumped_for_orchestration_change(self):
         manifest = json.loads((REPO_ROOT / ".claude-plugin" / "plugin.json").read_text())
 
-        self.assertEqual(manifest["version"], "1.2.3")
+        self.assertEqual(manifest["version"], "1.2.4")
 
 
 if __name__ == "__main__":

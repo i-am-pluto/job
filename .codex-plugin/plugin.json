@@ -1,10 +1,10 @@
 {
   "name": "job-search",
-  "version": "1.1.7",
+  "version": "1.2.4",
   "description": "Automated job application system for Instahyre, LinkedIn, Naukri, Lever, Workday, and external ATS workflows.",
   "author": {
     "name": "i-am-pluto",
-    "url": "https://github.com/i-am-pluto"
+    "url": "https://github.com/i-am-pluto/job"
   },
   "homepage": "https://github.com/i-am-pluto/job",
   "repository": "https://github.com/i-am-pluto/job",
@@ -28,7 +28,8 @@
     "./skills/lever",
     "./skills/workday",
     "./skills/generic-apply",
-    "./skills/resume-tuner"
+    "./skills/resume-tuner",
+    "./skills/networking"
   ],
   "agents": [
     "./agents/job-ceo.md",
@@ -36,12 +37,14 @@
     "./agents/linkedin-agent.md",
     "./agents/naukri-agent.md",
     "./agents/greenhouse-agent.md",
-    "./agents/generic-apply-agent.md"
+    "./agents/generic-apply-agent.md",
+    "./agents/networking-agent.md"
   ],
   "commands": [
     "./commands/nightly-job-apply.md",
     "./commands/job-apply-status.md",
-    "./commands/tune-job-search.md"
+    "./commands/tune-job-search.md",
+    "./commands/networking-run.md"
   ],
   "interface": {
     "displayName": "Job Search",
