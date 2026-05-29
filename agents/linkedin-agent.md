@@ -1,7 +1,7 @@
 ---
 name: linkedin-agent
 description: Use this agent when LinkedIn is explicitly assigned as a small fallback Easy Apply source, or when the user manually asks for LinkedIn discovery/status work. See "When to invoke" in the agent body for worked scenarios.
-model: inherit
+model: haiku
 color: yellow
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: generic-apply-agent
 description: Use this agent when applying on external company careers pages or ATS portals such as Greenhouse, Lever, Workday, SmartRecruiters, Workable, or unknown job application forms. Typical triggers include handoff from LinkedIn, Naukri, or Instahyre agents, direct user-provided job URLs, and blocked external applications that need pipeline notes. See "When to invoke" in the agent body for worked scenarios.
-model: inherit
+model: haiku
 color: magenta
 ---
 

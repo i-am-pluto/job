@@ -1,7 +1,7 @@
 ---
 name: naukri-agent
 description: Use this agent when applying to Naukri jobs through the NopeRi API adapter, scanning Naukri jobs, or saving Naukri company-site redirects for follow-up. Typical triggers include CEO assignment for Naukri quota, user requests to run Naukri, and scheduled nightly Naukri work. See "When to invoke" in the agent body for worked scenarios.
-model: inherit
+model: haiku
 color: green
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: greenhouse-agent
 description: Discovers and applies to Greenhouse-hosted jobs
-model: inherit
+model: haiku
 color: orange
 ---
 

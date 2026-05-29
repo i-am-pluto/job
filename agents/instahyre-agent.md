@@ -1,7 +1,7 @@
 ---
 name: instahyre-agent
 description: Use this agent when applying to Instahyre matching jobs, scanning Instahyre opportunities, handling Instahyre one-click apply, or handing Instahyre company-site links to generic-apply-agent. Typical triggers include CEO assignment for Instahyre quota, user requests to scan Instahyre, and scheduled nightly Instahyre work. See "When to invoke" in the agent body for worked scenarios.
-model: inherit
+model: haiku
 color: cyan
 ---
 
