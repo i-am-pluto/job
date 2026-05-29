@@ -74,12 +74,6 @@ Name | Degree | Title | Company | Profile URL | Role/team signal | Score reason
 
 ## Phase 2 - CONNECT
 
-Before sending new invites, enforce the pending-invite gate:
-
-1. Open `https://www.linkedin.com/mynetwork/invitation-manager/sent/`.
-2. Read page text.
-3. If a `People (N)` count or equivalent pending count is `>= 80`, skip new invites for this run and report the limit.
-
 For each candidate, max 10 per run:
 
 1. Open the profile URL.
@@ -177,8 +171,6 @@ Networking result:
   Messages sent: N
   Skipped:
     - Name | Reason
-  Rate limits:
-    - pending invites: N
   Memory updates:
     - data/memory/networking.md: ...
 ```

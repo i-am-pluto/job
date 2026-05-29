@@ -180,9 +180,13 @@ Never invent profile facts. If job-ceo returns an answer, that answer is drawn f
 ---
 
 ## Skip conditions → save URL to `data/pipeline.md` and move on
-- Login wall: CAPTCHA, phone verification, or LinkedIn-only with no native form
-- Required field unresolvable after CEO escalation
-- CAPTCHA blocks form submission
-- Required field not derivable from profile.md or resume markdown and CEO returns UNKNOWN
-- "Apply with LinkedIn" is the only apply option and user hasn't confirmed
+- Login wall: CAPTCHA blocks account creation, or phone-number-only verification (no email OTP path)
+- Required field unresolvable after CEO escalation and CEO returns UNKNOWN
+- "Apply with LinkedIn" is the only apply option and no native form exists
 - Job posting closed / "No longer accepting applications"
+
+**Do NOT skip for:**
+- Login/account wall — follow the full Login Wall flow (Google SSO → email+password → sign up)
+- Email OTP verification — open Gmail tab and retrieve the OTP
+- Account creation required — create the account, save the password to DB notes, continue
+- Assessment gate (HackerRank, Codility, etc.) — submit the application form first; if the assessment is a separate step after submission, log the assessment link in DB notes and flag in action-needed. Do not skip the application itself.

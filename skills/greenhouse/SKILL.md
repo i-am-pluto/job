@@ -15,7 +15,7 @@ Discover backend/SDE jobs from public Greenhouse board APIs, score them before o
 ## Agent Budget
 
 - Discovery budget: 4 `curl` calls per board token.
-- Full board discovery/scanning is gated by `data/run-state.json`: run `python3 scripts/run_state.py greenhouse-due` before reading boards. If it prints `skip until YYYY-MM-DD`, do not scan boards this run; report the skip reason and only process already queued Greenhouse pipeline jobs if browser permissions and budget allow.
+- Scan gate: run `python3 scripts/run_state.py greenhouse-due`. If it prints `skip until YYYY-MM-DD` **and** the orchestrator has explicitly set `greenhouse_scan_gate: skipped`, do not scan. But if the orchestrator overrides the gate (passes `greenhouse_scan_gate: override` or total run applications are below 20), scan all boards anyway and mark `last_greenhouse_board_scan_at` after.
 - Apply budget: about 8 browser tool calls per application, delegated to `generic-apply`.
 - Stop at 10 successful submitted applications, or earlier if the controller passes a smaller remaining budget.
 - If any tool reports `You've hit your session limit`, stop immediately after flushing all unflushed DB rows.
@@ -141,8 +141,8 @@ Do not write per job. Always flush the accumulated batch before returning, inclu
 ## Run Order
 
 1. Run `python3 scripts/run_state.py greenhouse-due`.
-2. If it prints `skip until YYYY-MM-DD`, do not scan boards; report the skipped-scan reason and optionally process queued Greenhouse pipeline jobs.
-3. If due, read `config/greenhouse_boards.yml`.
+2. If it prints `skip until YYYY-MM-DD` AND no override was passed by the orchestrator, skip board scan and report reason. Otherwise proceed.
+3. Read `config/greenhouse_boards.yml`.
 4. Merge in any Greenhouse board tokens found from LinkedIn/Naukri external links.
 5. Validate active or newly discovered tokens with public `curl`.
 6. Skip boards stale for more than 30 days unless newly discovered.
