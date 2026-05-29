@@ -7,7 +7,7 @@ You are the orchestrator for the nightly job-application run. This is authorized
 
 Working directory: `/Users/parikshit/Documents/code/job`
 
-**Model dispatch policy:** Platform agents (naukri, instahyre, linkedin, greenhouse, generic-apply) are mechanical executors — dispatch them with `model="haiku"`. job-ceo does planning/judgment — dispatch with `model="sonnet"`.
+**Model dispatch policy:** Platform agents (naukri, instahyre, linkedin, greenhouse, generic-apply, networking) are mechanical executors — dispatch them with `model="haiku"`. job-ceo does planning/judgment — dispatch with `model="sonnet"`.
 
 ---
 
@@ -19,11 +19,11 @@ Invoke `job-ceo` as a **foreground agent** (mode: `plan`). It reads context and 
 Agent(
   subagent_type="job-search:job-ceo",
   model="sonnet",
-  prompt="Mode: plan. Working dir: /Users/parikshit/Documents/code/job. Date: <TODAY>. Read CLAUDE.md, profile.md, resumes/cache-index.json, data/memory/ceo.md, config/greenhouse_boards.yml, and run `python3 scripts/db.py list`. Return a structured plan block with: quotas (instahyre/naukri/linkedin targets plus greenhouse target 10), resume_archetype_map (signal patterns → PDF paths), dup_list (company+role+platform already applied), scoring_rule summary, and ceo_advice from memory for this run."
+  prompt="Mode: plan. Working dir: /Users/parikshit/Documents/code/job. Date: <TODAY>. Read CLAUDE.md, profile.md, resumes/cache-index.json, data/memory/ceo.md, data/memory/networking.md, config/greenhouse_boards.yml, run `python3 scripts/db.py list`, and run `python3 scripts/db_networking.py summary`. Return a structured plan block with: quotas (instahyre/naukri/linkedin targets plus greenhouse target 10 and networking outreach budget), resume_archetype_map (signal patterns → PDF paths), dup_list (company+role+platform already applied), networking_goal, scoring_rule summary, and ceo_advice from memory for this run."
 )
 ```
 
-Extract from the result: quotas, resume archetype map, dup list, ceo_advice. You will inject these into later agent prompts.
+Extract from the result: quotas, resume archetype map, dup list, networking_goal, ceo_advice. You will inject these into later agent prompts.
 
 ---
 
@@ -51,7 +51,7 @@ Collect items requiring human action (recruiter replies, assessments, interview 
 
 ## STAGE 3 — SCAN (parallel)
 
-The scan phase covers Instahyre, Naukri through NopeRi, LinkedIn fallback only if budget remains, and Greenhouse only when its 7-day board-scan gate is due. Greenhouse scans use the public Greenhouse API from `config/greenhouse_boards.yml` and do not need a browser during scan.
+The scan phase covers Instahyre, Naukri through NopeRi, LinkedIn fallback only if budget remains, Greenhouse only when its 7-day board-scan gate is due, and LinkedIn networking outreach. Greenhouse scans use the public Greenhouse API from `config/greenhouse_boards.yml` and do not need a browser during scan.
 
 ---
 
@@ -77,6 +77,19 @@ Wait for all four to complete. Collect all results.
 
 ---
 
+## STAGE 5B — NETWORKING OUTREACH
+
+Run LinkedIn networking after the application agents. Networking uses LinkedIn content search and the `networking_outreach` table, not the applications table. It is allowed to send connection requests and follow-up messages in nightly mode within the skill limits.
+
+```
+Agent(subagent_type="job-search:networking-agent", model="haiku", run_in_background=True,
+  prompt="Mode: nightly-job-apply. Working dir: /Users/parikshit/Documents/code/job. Date: <TODAY>. Networking goal: <NETWORKING_GOAL>. CEO advice: <INSERT_CEO_ADVICE>. Invoke skill job-search:networking via the Skill tool. Run all four phases: SCAN recent LinkedIn hiring posts, CONNECT up to 10 qualified leads only if pending invites are below 80, ACCEPTED_SCAN by diffing sent invites against scripts/db_networking.py list --status invite_sent, and MESSAGE up to 5 accepted contacts with a resume selected by pick_resume.py. Initialize the table with scripts/init_networking_db.py if needed. Respect nightly mode: autonomous sends are allowed within limits, but skip CAPTCHA/password/unknown file-upload blockers. Return: scanned count, invited list, accepted found, messages sent, skipped list, rate-limit state, memory updates for data/memory/networking.md.")
+```
+
+Wait for networking-agent to complete. Collect `NETWORKING results: <INSERT_NETWORKING_RESULTS>`, including `Accepted found` and `Messages sent`.
+
+---
+
 ## STAGE 6 — LOG
 
 Invoke `job-ceo` as a **foreground agent** (mode: `log`). Pass all collected results. Wait for final report.
@@ -95,12 +108,14 @@ APPLY results:
   Naukri: <INSERT_NAUKRI_RESULTS>
   LinkedIn: <INSERT_LINKEDIN_RESULTS>
   Greenhouse: <INSERT_GREENHOUSE_RESULTS>
+NETWORKING results: <INSERT_NETWORKING_RESULTS>
 
 Tasks:
 1. Write run log: `python3 scripts/db_batch_insert.py --log-run --instahyre N --linkedin N --greenhouse X --status-updates N --summary 'Naukri: N applied. ...'`
 2. Print DB summary: `python3 scripts/db.py summary`
-3. Update data/memory/ceo.md with platform health table, durable lessons, next-run checklist.
-4. Return final report in the format required by CLAUDE.md, including `Greenhouse: X applied`, Agent performance, and Memory updates sections."
+3. Print networking summary: `python3 scripts/db_networking.py summary`
+4. Update data/memory/ceo.md with platform health table, durable lessons, networking outreach summary, next-run checklist.
+5. Return final report in the format required by CLAUDE.md, including `Greenhouse: X applied`, `Networking: X invited, Y accepted found, Z messages sent`, Agent performance, and Memory updates sections."
 )
 ```
 
