@@ -46,6 +46,12 @@ Instahyre is second priority after Naukri in the nightly workflow.
 - The user must be logged into Instahyre in Chrome
 - Use the already-open Instahyre tab (find it via `tabs_context_mcp`); if not open, navigate `https://www.instahyre.com/candidate/opportunities/?matching=true` in an existing tab
 
+## Scan order — two passes to hit the 15-application target
+
+**Pass 1 — Matching jobs** (`?matching=true`): All cards Instahyre has pre-matched to the profile. Apply to all scoring ≥ 4. Follow pagination (click "Next" if present) until cards run out or limit reached.
+
+**Pass 2 — All opportunities** (`/candidate/opportunities/` without `matching=true`): Run only if Pass 1 applied fewer than 15 jobs. Navigate to `https://www.instahyre.com/candidate/opportunities/` (no filter), score visible cards, apply to ≥ 4. Skip any already applied in Pass 1 (check company+role against in-memory batch). Follow pagination. Stop when total applied = 15 or cards are exhausted.
+
 ## Profile source
 Before scoring or applying, read:
 - `profile.md` for targeting rules, avoid rules, location preferences, and fit scoring.
@@ -58,6 +64,8 @@ Before scoring or applying, read:
 navigate → https://www.instahyre.com/candidate/opportunities/?matching=true
 ```
 Use `read_page(filter=all, depth=4)` to get all job cards. This returns the full list without screenshots.
+
+After exhausting matching cards (or if matching pool has fewer than 15 applying jobs), navigate to `https://www.instahyre.com/candidate/opportunities/` (all opportunities, no filter) and continue the same scoring + apply loop from where you left off.
 
 ### Step 2 — Dismiss startup popups immediately
 Before doing anything else, check for and dismiss these overlays using JavaScript — they block all interactions:
@@ -91,6 +99,8 @@ Known popups (check visibility via JS before clicking):
 
 ### Step 3 — Score every job up front
 From the `read_page` output, score ALL cards 1-5 before opening any modal. Build an ordered plan: APPLY (≥4) or SKIP (<4). Per `profile.md`: all backend and fullstack roles score ≥ 4 regardless of language.
+
+After applying all cards on the current page, check for a "Next" / pagination button and load the next page. Repeat until 15 applied or no more pages on the current URL. Then switch to the all-opportunities URL if target not met.
 
 ### Step 4 — Apply loop using JavaScript modal inspection
 

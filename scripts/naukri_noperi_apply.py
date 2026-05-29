@@ -37,6 +37,14 @@ SEARCH_QUERIES = [
     {"keyword": "java developer", "location": ""},
     {"keyword": "platform engineer", "location": ""},
     {"keyword": "distributed systems", "location": ""},
+    {"keyword": "python developer", "location": ""},
+    {"keyword": "golang developer", "location": ""},
+    {"keyword": "api developer", "location": ""},
+    {"keyword": "microservices developer", "location": ""},
+    {"keyword": "kotlin developer", "location": ""},
+    {"keyword": "cloud backend engineer", "location": ""},
+    {"keyword": "data platform engineer", "location": ""},
+    {"keyword": "ai backend engineer", "location": ""},
 ]
 
 SKIP_TITLE_PATTERNS = [
@@ -82,11 +90,28 @@ BACKEND_SIGNALS = [
     "python",
     "node",
     "golang",
+    "go ",
+    "ruby",
+    "php",
     "api",
+    "rest",
+    "graphql",
     "microservice",
     "distributed",
     "platform",
     "data platform",
+    "cloud",
+    "aws",
+    "gcp",
+    "azure",
+    "kafka",
+    "spark",
+    "kubernetes",
+    "docker",
+    "llm",
+    "ai engineer",
+    "ml engineer",
+    "engineer",
 ]
 
 COMMERCIAL_NOTIFICATION_PATTERNS = [
@@ -200,6 +225,10 @@ def score_job(job: JobRecord) -> ScoreDecision:
 
     if any(signal in haystack for signal in BACKEND_SIGNALS):
         return ScoreDecision(4, True, "Backend/fullstack role; workspace scoring rule applies")
+
+    # Generic engineering/developer titles not in skip list — score 4 per profile rules
+    if any(word in title for word in ("engineer", "developer", "sde", "swe")):
+        return ScoreDecision(4, True, "Engineering role; applying per broad backend scope rule")
 
     return ScoreDecision(3, False, "Backend ownership unclear")
 
@@ -362,7 +391,7 @@ def search_jobs(jc, pages: int, job_age: int) -> list[JobRecord]:
             raw_jobs = jc.search_jobs(
                 keyword=query["keyword"],
                 location=query["location"],
-                experience=3,
+                experience=2,
                 job_age=job_age,
                 page=page,
             )
@@ -545,8 +574,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dry-run", action="store_true", help="Search, score, and print DB payloads without applying.")
     parser.add_argument("--no-apply", action="store_true", help="Do not submit applications; useful for interactive review.")
     parser.add_argument("--limit", type=int, default=15, help="Maximum direct Naukri applications to submit.")
-    parser.add_argument("--pages", type=int, default=1, help="Search pages per keyword.")
-    parser.add_argument("--job-age", type=int, default=7, help="Naukri jobAge filter in days.")
+    parser.add_argument("--pages", type=int, default=2, help="Search pages per keyword.")
+    parser.add_argument("--job-age", type=int, default=14, help="Naukri jobAge filter in days.")
     parser.add_argument("--allow-external-pipeline", action="store_true", help="Save external redirects to data/pipeline.md.")
     parser.set_defaults(browser_fallback=False)
     return parser
