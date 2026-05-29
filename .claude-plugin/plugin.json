@@ -1,7 +1,7 @@
 {
   "name": "job-search",
-  "version": "1.1.6",
-  "description": "Automated job application system for Instahyre, LinkedIn, Naukri, and external ATS workflows.",
+  "version": "1.1.7",
+  "description": "Automated job application system for Instahyre, LinkedIn, Naukri, Lever, Workday, and external ATS workflows.",
   "author": {
     "name": "i-am-pluto",
     "url": "https://github.com/i-am-pluto/job"
@@ -16,6 +16,8 @@
     "linkedin",
     "naukri",
     "instahyre",
+    "lever",
+    "workday",
     "ats"
   ],
   "skills": [
@@ -23,6 +25,8 @@
     "./skills/linkedin",
     "./skills/naukri",
     "./skills/greenhouse",
+    "./skills/lever",
+    "./skills/workday",
     "./skills/generic-apply",
     "./skills/resume-tuner"
   ],

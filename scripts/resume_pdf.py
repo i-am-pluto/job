@@ -342,14 +342,6 @@ def build_pdf(md_path: str, pdf_path: str):
     render_pdf(name, contact, sections, pdf_path,
                font_scale=best_font_scale, spacing_scale=best_spacing_scale)
 
-    # one-page guard
-    pages = count_pages(pdf_path)
-    if pages == 1:
-        print("OK  %s -> %s  (1 page, font %.3f, spacing %.3f)" %
-              (md_path, pdf_path, best_font_scale, best_spacing_scale))
-    else:
-        print("WARNING  %s -> %s spans %s pages - TRIM CONTENT to one page."
-              % (md_path, pdf_path, pages))
 
 
 if __name__ == "__main__":

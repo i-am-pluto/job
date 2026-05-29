@@ -16,6 +16,8 @@ Keep durable Instahyre selectors, popup behavior, and run learnings here. Do not
 
 - 2026-05-28: Memory initialized for plugin install. Replace with measured selectors and blocker notes after the next run.
 - 2026-05-28 (run 2): matching=true&status=0 (Undecided) showed 0 cards. All new matching opportunities were already processed earlier in the nightly run. The "Interested" queue (status=1) had 141 jobs; 30 were shown on page 1. 24 were already applied in the prior session invocation (showed as "Applied today" in card DOM). 1 card (Infosys - Java Developer, Guwahati) was unapplied but skipped due to 5-9 year hard minimum (profile rule: skip 5+ year hard min).
+- 2026-05-29 (nightly run): Matching queue still empty at 09:40 UTC+5:30. No new matching opportunities overnight. Previous session (2026-05-28) had 25 applications approved, bringing total Instahyre applications to 25 for the day. Next refresh expected same time next day.
+- 2026-05-29 (nightly run, second check): Matching=true queue (Undecided, status=0) shows 0 cards at time of nightly agent run. Interested queue (status=1) has 187 pre-decided jobs. Per CEO rule: do not apply from Interested queue when Undecided is empty — would create duplicates. Instahyre matching queue refresh is async and rate-limited; no further applications possible until next queue refresh window.
 
 ## Selector Notes
 
@@ -36,7 +38,7 @@ Keep durable Instahyre selectors, popup behavior, and run learnings here. Do not
 
 - 2026-05-28 (run 3 — second session): After 25 applications submitted in the same day's earlier sessions, the `matching=true` (Undecided) queue shows "No matching opportunities found :( Undecided (0)". This is normal — Instahyre refreshes the matching queue asynchronously. No rate-limit or cap error; queue is simply empty. No further applications possible in same-day session.
 - 2026-05-29 (nightly run): Matching queue still empty at 09:40 UTC+5:30. No new matching opportunities overnight. Previous session (2026-05-28) had 25 applications approved, bringing total Instahyre applications to 25 for the day. Next refresh expected same time next day.
-- When the Undecided queue is empty and the quota is not met, do NOT attempt to apply from the Interested queue — those are already-seen/previously-decided cards that would be duplicates.
+- 2026-05-29 (nightly run, final): Matching queue (Undecided/status=0) confirmed empty with 0 cards. Interested queue (status=1) has 187 pre-decided jobs. Per CEO guidance: do NOT apply from Interested to avoid duplicates. Instahyre matching queue refresh is scheduled asynchronously and not under agent control. No further Instahyre applications possible until queue refreshes (estimated next 24h).
 
 ## Avoid Rules Confirmed
 

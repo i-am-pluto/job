@@ -19,10 +19,10 @@ This is persistent operational memory for the job-search CEO agent. Keep it focu
 
 | Platform | Recent signal | Applied this run | Blocker | Next adjustment |
 | --- | --- | --- | --- | --- |
-| Instahyre | Queue exhausted 2026-05-29 (second consecutive day after 25-app run 2026-05-28). 25 total apps in DB. | 0 (queue exhausted — expected, not a bug) | Matching feed empty — refreshes daily. Used only 12 tool calls; agent stopped correctly. | Queue expected to refresh by next run. Check matching=true&status=0 first; if empty, skip stage entirely in < 5 tool calls. |
-| Naukri | 3 new apps 2026-05-29 (TCS, Persistent, Nustar). Sandhata was dupe. 50 total Naukri apps in DB. | 3 (4 attempted, 1 dupe skipped) | Keyword "Java developer" surfacing walk-in events and LAMP roles. Quota of 15 not met. | Switch to quality keywords: "Java backend", "Spring Boot", "backend engineer", "platform engineer". Re-read dup list right before building submission batch. |
-| LinkedIn | 0 applied 2026-05-29. 47 tool calls consumed on 1 stuck job (G-P Greenhouse-inside-LinkedIn trap). | 0 (budget exhausted on 1 job) | Greenhouse-inside-LinkedIn modal trap. Pre-scoring rule not followed. Keyword "Java backend" returned 400+ results with ~1% Easy Apply rate. | Score ALL cards before opening any. Detect and immediately skip Greenhouse-inside-LinkedIn jobs. Switch to narrower keywords. |
-| Greenhouse | 0 applied 2026-05-29 (0 applied across all runs). 10 queued jobs all blocked. | 0 (all queued jobs hit known blockers) | Stripe (permanent), LaunchDarkly (8+ yr min — should never have been queued), HackerRank/Razorpay (assessment gates), Samsara/Toast (access restricted). Board scan not due until 2026-06-04. | Clean the queue: remove LaunchDarkly (score fail), save HackerRank/Razorpay/Samsara/Toast to pipeline, skip Stripe. Known-blocker table in greenhouse.md now enables short-circuit in < 5 tool calls. Human must grant browser permissions. |
+| Instahyre | Queue exhausted 2026-05-29 (FOURTH consecutive run). 25 total apps in DB. | 0 (queue empty — expected) | Matching feed consistently empty. | Skip Instahyre stage in < 3 tool calls if empty again. Do not investigate or retry. Queue may not be refreshing. |
+| Naukri | 3 net new apps 2026-05-29 via NopeRi (NR GROUP/Backend Developer Python, R1 RCM/Software Engineer, +1 other). Adapter reported 48 but DB delta = 3 actual new. 54 total Naukri apps in DB. Adapter limit flag not enforced — overshoot on API calls. | 3 (adapter reported 48 — overshoot; only 3 stuck in DB as new) | NopeRi `--limit` flag not being enforced; adapter overcalls. External redirect rate still high. | Verify `--limit 15` is enforced by adapter. Audit NopeRi call count before batch. |
+| LinkedIn | 1 applied 2026-05-29 (JoVE/Software Engineer/Delhi Remote). 3 jobs closed (TransUnion, CrowdStrike, Dassault). 11 external redirects saved. | 1 Easy Apply | 11 external ATS links unsaved to pipeline. Turing + Precisely from prior queue still open. | Add Turing and Precisely back to LinkedIn queue for next run. Process 11 externals via generic-apply-agent. |
+| Greenhouse | 0 applied. Board scan NOT due until 2026-06-05. Entire 2026-04-12 pipeline cleared (87 entries dead). 2026-05-28 section: HackerRank/Razorpay assessment-gated, Samsara/Toast scored <4 seniority mismatch, LaunchDarkly permanent skip. | 0 (queue cleared) | 2026-04-12 batch fully dead. Assessment-gated jobs need human action. | Board scan due 2026-06-05 will replenish queue. Remove Samsara, Toast, LaunchDarkly from queue permanently. Do not reprocess 2026-04-12 batch. |
 
 ## Pipeline Processing (STAGE 4 — after Naukri/Instahyre, before LinkedIn)
 
@@ -47,7 +47,7 @@ This is persistent operational memory for the job-search CEO agent. Keep it focu
 - Greenhouse pipeline batch: up to 10 applications, 20 tool calls delegated to greenhouse-agent
 - Generic-apply pipeline batch: up to 5 applications, 15 tool calls each
 
-Note: pipeline.md currently has 54+ Pending entries from 2026-04-12. Many are high-score AI/backend roles (Perplexity, Palantir, Replit, Cohere, Notion, etc.). These should be processed before adding new pipeline entries.
+Note: The entire 2026-04-12 pipeline batch (87 entries: 33 Greenhouse, 14 Lever, 18 Ashby+Workable, 22 generic) is now DEAD — confirmed 2026-05-29. Do not reprocess these URLs. Lever entries returned 404 (expired). Greenhouse entries were US-only requiring sponsorship. Generic batch (Samsara, Toast, Palantir, Perplexity, Cohere, Notion, Replit, Onehouse) all US-only or seniority mismatch. Remove all 2026-04-12 entries from pipeline or mark Cleared.
 
 ## Agent Budgets (revised 2026-05-29)
 
@@ -71,7 +71,9 @@ Skip in 0 tool calls — structural, not fixable by permissions.
 | Company | Platform | Blocker |
 | --- | --- | --- |
 | Stripe (all roles) | Greenhouse | CEO safety restriction — permanent employer block |
-| LaunchDarkly | Greenhouse | Hard 8+ year experience minimum — score < 4; remove from queue |
+| LaunchDarkly | Greenhouse | Hard 8+ year experience minimum — score < 4; confirmed 2026-05-29, remove from queue |
+| Samsara | Greenhouse | Seniority mismatch — scored <4 (2026-05-29), remove from queue permanently |
+| Toast | Greenhouse | Seniority mismatch — scored <4 (2026-05-29), remove from queue permanently |
 
 ## Permission-Gated Companies (high value — worth unlocking)
 
@@ -79,8 +81,8 @@ These are blocked only because browser permissions have not been granted. They s
 
 | Company | Domain needed | Notes |
 | --- | --- | --- |
-| Samsara | samsara.com | Strong backend match |
-| Toast | toasttab.com | Strong backend match |
+| ~~Samsara~~ | ~~samsara.com~~ | Removed 2026-05-29 — scored <4, seniority mismatch. Moved to permanent skips. |
+| ~~Toast~~ | ~~toasttab.com~~ | Removed 2026-05-29 — scored <4, seniority mismatch. Moved to permanent skips. |
 
 ## Assessment-Gated Companies (Action Needed — human)
 
@@ -95,7 +97,25 @@ These are blocked only because browser permissions have not been granted. They s
 | --- | --- | --- |
 | G-P (GlobalPay) | LinkedIn Easy Apply | Greenhouse modal embedded inside LinkedIn — extract boards.greenhouse.io URL; apply via greenhouse skill |
 
-## Budget Efficiency Retrospective (2026-05-29)
+## Budget Efficiency Retrospective (2026-05-29 pipeline-clear run)
+
+| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
+| --- | ---: | ---: | --- | --- |
+| Naukri | ~N/A | 3 | ~N/A | NopeRi --limit not enforced; adapter reported 48 but only 3 net new. Overshoot on API calls. |
+| Instahyre | < 3 | 0 | N/A | Queue empty x4 consecutive — correctly detected fast. |
+| LinkedIn | ~12 | 1 | 12 | JoVE Easy Apply success. 11 externals saved. 3 closed jobs (TransUnion, CrowdStrike, Dassault). |
+| Greenhouse pipeline | ~15 | 0 | N/A | Entire 2026-04-12 batch dead (87 entries cleared). 2026-05-28 section: assess-gated or low-score. |
+
+## Budget Efficiency Retrospective (2026-05-29 run 3)
+
+| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
+| --- | ---: | ---: | --- | --- |
+| Naukri | ~75 | 1 | 75x (target < 6x) | 65%+ external redirects; 5 dupes caught; questionnaire blocks. 120 jobs saved to pipeline but not applied. |
+| Instahyre | < 5 | 0 | N/A | Queue empty — correctly detected and stopped in < 5 tool calls. Efficient. |
+| LinkedIn | 12 | 0 | N/A | Budget (12 calls) insufficient for even 1 Easy Apply. Broad keyword; fallback correctly skipped. |
+| Greenhouse | < 5 | 0 | N/A | All 15 queued jobs cleared as blocked/stale/low-score using known-blocker table. Efficient. |
+
+Previous retrospective (2026-05-29 earlier runs):
 
 | Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
 | --- | ---: | ---: | --- | --- |
@@ -112,6 +132,17 @@ Target efficiency:
 
 ## Run Learnings
 
+- 2026-05-29 (pipeline-clear run): Entire 2026-04-12 pipeline batch (87 entries) confirmed dead — Lever 404, Greenhouse US-only/sponsorship, Ashby/Workable specialized/niche, generic batch US-only or seniority mismatch. Do NOT reprocess. Mark all 2026-04-12 entries as Cleared.
+- 2026-05-29 (pipeline-clear run): NopeRi --limit flag not enforced. Adapter reported 48 but only 3 net new entries in DB. Must audit adapter behavior — add explicit cap check before batch or after batch using DB delta.
+- 2026-05-29 (pipeline-clear run): Instahyre empty for FOURTH consecutive run. Skip stage in < 3 tool calls from now on. Feed may not be refreshing for this account.
+- 2026-05-29 (pipeline-clear run): LinkedIn JoVE/Software Engineer/Delhi Remote successfully applied via Easy Apply (1 apply). Turing and Precisely still in LinkedIn queue — add to next run.
+- 2026-05-29 (pipeline-clear run): Greenhouse 2026-05-28 section: HackerRank and Razorpay are assessment-gated (human must complete assessment before re-queue). Samsara and Toast scored <4 (seniority mismatch) — moved to permanent skips. LaunchDarkly confirmed permanent skip.
+- 2026-05-29 (run 3): Naukri yielded only 1 apply from 75+ scanned jobs (Uprise Labs). 120 new external redirect URLs saved to pipeline. Pipeline.md backlog is now the primary untapped apply source — must route to greenhouse-agent and generic-apply-agent in next run's STAGE 4.
+- 2026-05-29 (run 3): Instahyre queue empty for third consecutive run. No bug — feed refreshes daily. Confirmed correctly in < 5 tool calls.
+- 2026-05-29 (run 3): LinkedIn 12-call budget is too thin for even one Easy Apply. Either allocate at least 15 calls or skip LinkedIn entirely. Broad "Backend Engineer" keyword generates volume but low Easy Apply rate.
+- 2026-05-29 (run 3): Greenhouse queue fully cleared — all 15 entries were blocked, low-score, or stale. Board scan due 2026-06-05 will replenish. The Greenhouse stage currently delivers 0 value without browser permissions; unlocking samsara.com and toasttab.com is the single highest-ROI human action available.
+- 2026-05-29 (run 3): Gmail scan found 9 emails (8 new), all LinkedIn notifications or job alerts — no status signals (no interview/rejection/offer). Status stage was correct and fast.
+- 2026-05-29 (run 3): EPAM India and foodpanda rejection statuses from prior run still not updated in DB (companies not matched). Needs manual DB update or CEO fix.
 - 2026-05-29 (retrospective): LinkedIn 47-call budget trap. G-P Staff AI Fullstack embedded a Greenhouse modal inside LinkedIn Easy Apply. Agent failed to detect the pattern and spent entire LinkedIn budget on 1 job. Fix: score all cards first, detect Greenhouse-inside-LinkedIn immediately, skip and save. See linkedin.md for detection signals.
 - 2026-05-29 (retrospective): Greenhouse 30-call re-discovery waste. All 10 queued jobs were blocked for reasons already known from 2026-05-28. Known-blocker table now in greenhouse.md. Next run should handle all 10 in < 5 tool calls total.
 - 2026-05-29 (retrospective): LaunchDarkly 8+ yr minimum escaped scoring. Scoring rule patched in greenhouse.md: extract hard experience minimum from JD; if > 5 years, score < 4, do not queue.
@@ -161,22 +192,27 @@ Target efficiency:
 
 ## Next Run Checklist
 
-- [ ] CRITICAL: Grant browser permissions for boards.greenhouse.io, samsara.com, toasttab.com — these unlock Samsara and Toast queued jobs (strong matches). HackerRank/Razorpay require human assessment first. LaunchDarkly: remove from queue (hard min). Stripe: do NOT grant — permanent CEO skip.
-- [ ] PIPELINE: data/pipeline.md has 54+ Pending entries from 2026-04-12 (Perplexity, Palantir, Replit, Cohere, Notion, Reddit, etc.). Run STAGE 4 pipeline processing — CEO pipeline mode will score/route these to greenhouse-agent and generic-apply-agent. High value, previously ignored.
+- [ ] CRITICAL: The 2026-04-12 pipeline batch (87 entries) is DEAD. Do not reprocess. Mark all 2026-04-12 entries as Cleared in pipeline.md before adding any new ones.
+- [ ] NopeRi --limit enforcement: verify adapter respects --limit 15 before run. Check DB delta after batch (compare DB total before/after). If overshoot continues, cap at 15 in wrapper.
+- [ ] Instahyre: skip stage if empty — confirmed empty x4. Spend < 3 tool calls on check. If empty, log and proceed.
+- [ ] LinkedIn queue: add Turing and Precisely back to Easy Apply queue. Also process 11 external-redirect saves from 2026-05-29 via generic-apply-agent.
+- [ ] Greenhouse: remove Samsara, Toast, LaunchDarkly from queue permanently (confirmed this run). HackerRank and Razorpay: human must complete assessments — then re-queue.
+- [ ] PIPELINE (remaining): data/pipeline.md still has Naukri redirect entries from prior runs. Route Greenhouse-pattern URLs to greenhouse-agent (API score first), other ATS to generic-apply-agent in batches of 3-5.
+- [ ] Grant browser permissions for boards.greenhouse.io — needed for new Greenhouse board scan (due 2026-06-05). HackerRank/Razorpay require human assessment first. Stripe: do NOT grant — permanent CEO skip.
+- [ ] Fix DB status for EPAM India and foodpanda: both companies need Rejected status updated. Use `python3 scripts/db.py list` to confirm exact company/role/platform strings first, then `db.py update-status`.
 - [ ] Set NAUKRI_USERNAME and NAUKRI_PASSWORD in .env before run — NopeRi adapter needs credentials.
-- [ ] Switch Naukri keywords from "Java developer" to: "Java backend", "Spring Boot", "backend engineer", "platform engineer", "Node.js backend" (in this order). Stop using "Java developer".
+- [ ] Naukri keywords (in order): "Java backend", "Spring Boot", "backend engineer", "platform engineer", "Node.js backend". Never use "Java developer".
 - [ ] Naukri agent: re-read `python3 scripts/db.py list` immediately before building the NopeRi submission batch (not just at plan time). Prevents dupe attempts.
-- [ ] LinkedIn: pre-score ALL visible cards from search results page before opening any individual card. Build ordered apply list first, then open from top.
-- [ ] LinkedIn: detect Greenhouse-inside-LinkedIn before spending tool calls. Save detected jobs to pipeline with Greenhouse URL, move to next card. Max 5 tool calls per detection+save.
-- [ ] LinkedIn: switch keywords to "Backend Developer India", "Java Spring Boot developer India", "SDE2 India", "Node.js developer India". Avoid broad "Java backend" (400+ results, ~1% Easy Apply rate).
-- [ ] Greenhouse: check known-blocker table in greenhouse.md BEFORE opening browser. If all queued jobs are in known-blocker list, report in < 5 tool calls and stop.
-- [ ] Greenhouse: clean pipeline queue before run — remove LaunchDarkly, mark assessment/restricted companies as human-required.
+- [ ] LinkedIn: allocate at least 15 tool calls or skip entirely. Use narrow keywords: "Backend Developer India", "SDE2 India", "Java Spring Boot developer India". Pre-score ALL cards before opening any. Use coordinate-click not JS click.
+- [ ] LinkedIn: detect Greenhouse-inside-LinkedIn before spending tool calls. Save to pipeline with Greenhouse URL, skip. Max 5 tool calls per detection+save.
+- [ ] Greenhouse: board scan due 2026-06-05 — do not trigger before that date. Queue is now fully empty (all 15 entries cleared). Check known-blocker table in greenhouse.md BEFORE opening browser.
+- [ ] Greenhouse: clean pipeline queue — remove LaunchDarkly permanently, mark assessment/restricted companies as human-required.
 - [ ] Run AFTER 7pm IST — session limits reset at 7pm IST on all platforms.
-- [ ] Run order: Naukri first through NopeRi only (quota 15), Instahyre second (check queue in < 5 calls; skip if empty), LinkedIn third (Easy Apply only, cap 3-5, per-job cap 10 tool calls), Greenhouse fourth (board scan due 2026-06-04; otherwise known-blocker check + queued jobs if permissions confirmed).
+- [ ] Run order: Naukri first (NopeRi, quota 15), Instahyre second (queue check < 5 calls; skip if empty), PIPELINE stage third (score/route 174+ pending entries), LinkedIn fourth (Easy Apply only, cap 3-5, per-job cap 10 tool calls; skip if budget < 15 calls), Greenhouse fifth (board scan due 2026-06-05; otherwise known-blocker check only).
 - [ ] Refresh dup list from DB before each platform: `python3 scripts/db.py list`.
-- [ ] Do NOT use `--naukri` flag in db_batch_insert.py — it does not exist.
+- [ ] Do NOT use `--naukri` flag in db_batch_insert.py — it does not exist. Log Naukri count in --summary text only.
 - [ ] Remove or mark inactive Greenhouse boards: grammarly, notion, plaid, ramp, rippling, segment (all returned 404).
 - [ ] Flush Naukri apps with `scripts/db_batch_insert.py --apps` after every 3-4 successful applications.
-- [ ] LinkedIn: use coordinate-click (not JS click) for Easy Apply modal. Budget ~6-8 tool calls per Easy Apply job.
-- [ ] Greenhouse board scan next eligible: 2026-06-04 — do not trigger scan before that date.
-- [ ] Instahyre: check matching=true&status=0 first; if empty, confirm in log and skip. Do not attempt Interested queue.
+- [ ] LinkedIn: use coordinate-click (not JS click) for Easy Apply modal. Budget ~8-10 tool calls per Easy Apply job.
+- [ ] Greenhouse board scan next eligible: 2026-06-05 — do not trigger before that date.
+- [ ] Instahyre: check matching=true&status=0 first; if empty, confirm in log in < 5 tool calls and skip. Do not attempt Interested queue.
