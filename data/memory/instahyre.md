@@ -35,6 +35,7 @@ Keep durable Instahyre selectors, popup behavior, and run learnings here. Do not
 ## Queue Exhaustion Pattern
 
 - 2026-05-28 (run 3 — second session): After 25 applications submitted in the same day's earlier sessions, the `matching=true` (Undecided) queue shows "No matching opportunities found :( Undecided (0)". This is normal — Instahyre refreshes the matching queue asynchronously. No rate-limit or cap error; queue is simply empty. No further applications possible in same-day session.
+- 2026-05-29 (nightly run): Matching queue still empty at 09:40 UTC+5:30. No new matching opportunities overnight. Previous session (2026-05-28) had 25 applications approved, bringing total Instahyre applications to 25 for the day. Next refresh expected same time next day.
 - When the Undecided queue is empty and the quota is not met, do NOT attempt to apply from the Interested queue — those are already-seen/previously-decided cards that would be duplicates.
 
 ## Avoid Rules Confirmed
