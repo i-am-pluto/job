@@ -98,6 +98,16 @@ These are blocked only because browser permissions have not been granted. They s
 | --- | --- | --- |
 | G-P (GlobalPay) | LinkedIn Easy Apply | Greenhouse modal embedded inside LinkedIn — extract boards.greenhouse.io URL; apply via greenhouse skill |
 
+## Budget Efficiency Retrospective (2026-05-30 — second run, user overrides)
+
+| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
+| --- | ---: | ---: | --- | --- |
+| Naukri | 0 | 0 | N/A | User override — skipped |
+| Instahyre | 0 | 0 | N/A | User override — skipped |
+| LinkedIn | budget exhausted | 0 | N/A (0 applies) | 5 candidates pre-scored (scores 4-5) but no tool calls remaining to submit. Saved to pipeline.md. |
+| Greenhouse | < 3 | 0 | N/A | All pipeline URLs were dupes; scan not due until 2026-06-05. |
+| Networking | < 3 | 0 | N/A | Gate triggered (83 pending > 80 threshold). |
+
 ## Budget Efficiency Retrospective (2026-05-30)
 
 | Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
@@ -143,6 +153,7 @@ Target efficiency:
 
 ## Run Learnings
 
+- 2026-05-30 (second run, user overrides): Naukri and Instahyre skipped by user override. LinkedIn pre-scored 5 candidates (Acumatica SDE 4, Kake Senior SWE LLM 5, Bright Matrix .Net 4, Jobgether Python 4, TAVIG Digital SWE 4) but exhausted tool budget before submitting any. All 5 saved to pipeline.md. Greenhouse: Lenskart was a dupe (applied 2026-05-29); Razorpay assessment-gated. Networking blocked at 83 pending invites. Total: 0 applies this run. CRISIS threshold not triggered (user intentionally overrode all primary platforms).
 - 2026-05-30: Naukri hit target of 15 applies via NopeRi (Quantum Phinance, Intellemo, Verdantis, Amazon, Nxtwave, Tekskills x3, Bluescope, Tracxn, ti Steps, Arshil LLC, Oriserve, EY, Nexgensis). 4 skipped. 138 external redirects saved to pipeline — pipeline backlog continues to grow.
 - 2026-05-30: Instahyre empty for FIFTH consecutive run. Evaluate whether to suspend Instahyre stage entirely. Feed is likely not refreshing for this account. Set a human alert.
 - 2026-05-30: LinkedIn Kake application blocked ~40 tool calls on a custom dropdown not interactable by MCP tools. Hard rule: if a form element is not interactable after 2 attempts, skip that job immediately. Per-job cap of 10 tool calls must be enforced without exception.
@@ -211,6 +222,7 @@ Target efficiency:
 
 ## Next Run Checklist
 
+- [ ] CRITICAL: LinkedIn pipeline has 5 pre-scored leads (Acumatica SDE 4, Kake Senior SWE LLM 5, Bright Matrix .Net 4, Jobgether Python 4, TAVIG Digital SWE 4) saved to pipeline.md from 2026-05-30 run. Prioritize these in next LinkedIn session. NOTE: Kake may have custom dropdown — skip immediately if form is not interactable after 2 attempts.
 - [ ] CRITICAL: The 2026-04-12 pipeline batch (87 entries) is DEAD. Do not reprocess. Mark all 2026-04-12 entries as Cleared in pipeline.md before adding any new ones.
 - [ ] CRITICAL: Instahyre empty x5 consecutive. Consider suspending Instahyre stage entirely until human confirms account shows fresh cards. Check in < 3 tool calls; if empty again, log and skip with no retry.
 - [ ] CRITICAL: LinkedIn per-job hard cap of 10 tool calls must be enforced without exception. If any form element is not interactable after 2 attempts, skip that job immediately. Do NOT spend 40 calls on one blocked job.
