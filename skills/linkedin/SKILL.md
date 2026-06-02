@@ -21,8 +21,9 @@ claude-in-chrome only for the adaptive Easy Apply form modal.**
 - `linkedin_read_jobs(limit=25)` → `{jobs:[{job_id,title,company,location,easy_apply,promoted,url}]}` in ONE call (replaces the manual scroll + read_page).
 - `linkedin_open_job(job_id)` → `{title,company,location,description,easy_apply,apply_url}` for scoring (replaces click + get_page_text).
 
-The actual Easy Apply multi-step modal is NOT covered by the MCP tools (it varies
-per job) — fill it with claude-in-chrome as before (Path B).
+Easy Apply now uses a hybrid approach: two new MCP tools handle the modal except
+the file-input step (Chrome MV3 blocks programmatic file selection from extensions).
+See Path B for the updated sequence — only 3 tool calls instead of 6–8.
 
 **Trigger:** "apply on LinkedIn", "find LinkedIn jobs", "search LinkedIn for [role]", or a LinkedIn jobs URL.
 **Target:** 3-5 submitted fallback Easy Apply applications per nightly run, only after Naukri and Instahyre finish or stop with budget remaining.
@@ -129,35 +130,53 @@ Skip/save URL to `data/pipeline.md` only if: Google login and email sign-up are 
 
 ---
 
-### Path B — Easy Apply (fallback)
+### Path B — Easy Apply (hybrid: extension + one chrome file_upload call)
 
-**CRITICAL: Synthetic JS clicks (`element.click()`) DO NOT open the Easy Apply modal.** The button is an `<a>` tag wrapped around a `<span>Easy Apply</span>` and requires a real DOM event. Use `mcp__Claude_in_Chrome__computer` `left_click` with the element's ref, OR with absolute coordinates from a screenshot. `find("Easy Apply button")` returns a single ref under aria-label "Easy Apply to this job" — pass it to `computer.left_click(ref=ref_X)`.
-
-**INTERSTITIAL: "Save this application?" popup appears on every Easy Apply click** if there is ANY prior draft (LinkedIn caches drafts forever). The popup blocks the modal. To bypass:
-  - Click the `×` close icon on the "Save this application?" popup (NOT Discard, NOT Save) — closing keeps the underlying Easy Apply modal open at Contact step.
-  - If you Discard, both popup AND modal close, and you must click Easy Apply again.
-
-**Exact tool call sequence (verified 2026-05-26):**
+**Primary path: 3 tool calls total** using the new extension tools. Only fall back to
+full claude-in-chrome if the extension reports `connected:false`.
 
 ```
-1. tab is already on https://www.linkedin.com/jobs/view/<JOB_ID>/ from linkedin_open_job
-   (if not, navigate there directly — the view URL skips the list pane)
-2. screenshot → locate "Easy Apply" button coordinates
-3. computer.left_click at those coordinates
-4. wait 3s, screenshot — if "Save this application?" popup is visible:
-     click its × at top-right of the popup card (not the modal's outer ×)
-5. Modal is now open at Contact step (0%) with prefilled fields → click Next
-6. Resume step (33%): backend-systems.pdf / base.pdf / ai-backend.pdf are uploaded; LinkedIn auto-selects one. Click Next.
-7. Additional Questions step (67%): fill per the field table below. If a single dropdown asks to "fill external Google Form" → close and save URL to data/pipeline.md (cannot satisfy autonomously).
-8. Review (100%) → screenshot → click Submit application
+Step 1 — Extension starts the modal and fills Contact step:
+  linkedin_start_easy_apply(job_id="<id>")
+  → returns {step, file_input_visible, has_existing_resume, file_input_selector}
+
+Step 2 — Resume step (extension cannot touch file inputs due to Chrome MV3):
+  If file_input_visible=true:
+    mcp__claude-in-chrome__file_upload(file_path="<pdf from pick_resume>",
+                                       selector="input[type='file']")
+  If has_existing_resume=true and correct variant already selected:
+    skip (LinkedIn auto-selected; extension already passed the step)
+  If has_existing_resume=true but wrong variant:
+    find("Select a resume") → form_input or computer.left_click the correct one
+
+Step 3 — Extension fills questions and submits:
+  linkedin_continue_easy_apply(
+    answers={"notice period": "30", "current ctc": "<from profile>",
+             "expected ctc": "<from profile>"},
+    submit=True
+  )
+  → returns {success, submitted, steps_traversed}
 ```
 
-**Contact step:** Pre-filled name/email/phone. If correct, `find("Next button")` → click. No screenshot needed.
+**Interstitial handled automatically** by `linkedin_start_easy_apply` — it dismisses
+the "Save this application?" popup by clicking the `aria-label=Dismiss` button before
+advancing to Contact step. Do not handle it manually.
 
-**Resume step (~50%):** LinkedIn pre-selects a previously uploaded resume.
-- To switch variant: `find("Select resume backend-systems.pdf")` or `find("Select resume ai-backend.pdf")` → `form_input` with the ref.
-- If no resume pre-selected (rare): `find("upload resume")` → `file_upload` with path from pick_resume output.
-- Click Next.
+**If `linkedin_start_easy_apply` returns `success:false`** (modal not found, button not
+found): fall back to full claude-in-chrome. Use `computer.left_click` with ref from
+`find("Easy Apply")`, then handle the interstitial ×, then fill all steps manually.
+
+**If extension is down (`connected:false`):** fall back to the legacy claude-in-chrome
+sequence (screenshot → coordinates → click → interstitial → steps) for the whole modal.
+
+**Resume step fallback details** (when `has_existing_resume=false` and `file_input_visible=false`):
+- LinkedIn may be on a later step already (extension auto-advanced past a pre-selected resume).
+- Call `linkedin_continue_easy_apply` immediately — it will fill questions and submit.
+
+**Additional questions step:** `linkedin_continue_easy_apply` fills fields by label
+substring matching. Pass the common fields via `answers={}`. If a field asks to
+"fill external Google Form" → extension will not find a matching input → check
+`submitted=false` in the response, then save URL to `data/pipeline.md` and move on.
 
 **Additional questions step (~75%) — KNOWN FIELD PATTERNS:**
 

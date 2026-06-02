@@ -74,7 +74,7 @@ Note: Apply to ALL backend and fullstack roles regardless of primary language (G
 ## Compensation And Availability
 
 - Current CTC: 28 LPA (₹28,00,000)
-- Expected CTC for SDE2-level roles: 35 LPA minimum (35-45 LPA range)
+- Expected CTC: 33 LPA (₹33,00,000) — use this for all form fields asking expected/desired CTC
 - Expected CTC for SDE3-level roles: 45-60 LPA
 - Notice period: 60 days (2 months)
 

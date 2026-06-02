@@ -1,7 +1,7 @@
 ---
 name: workday
 description: This skill should be used when applying to jobs on Workday ATS (myworkdayjobs.com, *.wd*.myworkdayjobs.com). Handles multi-step flow, resume auto-fill, Google SSO, email+password account creation, and DB logging.
-version: 1.1.0
+version: 1.2.0
 ---
 
 # Workday Job Application Skill
@@ -20,6 +20,56 @@ Apply to jobs on Workday-hosted career pages. Multi-step flow with resume auto-f
 3. **Resume:** `python3 scripts/pick_resume.py "<job title + top 3 JD skills>"` — use returned PDF.
 
 ---
+
+## Primary path: `ats-extension` MCP (preferred — no screenshots)
+
+The `ats-extension` Chrome-extension MCP drives Workday DOM-natively inside the
+user's already-logged-in session. It eliminates screenshots, coordinate clicks,
+below-fold scroll guesswork, and "Save vs Next" ambiguity (the content script
+sees the full DOM, visible-only). Use this whenever the extension is connected.
+
+**Login policy (do NOT automate account creation).** Workday account creation /
+email-verification is exactly what fails today (see `data/pipeline.md`: Motorola
+"email verification endpoint broken"). So:
+1. `ats_status` → if `logged_in: false` for this tenant, the human logs into that
+   Workday tenant ONCE in Chrome. The session persists; future applies reuse it.
+   Do not run the email+password/account-creation flow via automation.
+2. If the extension is disconnected (`connected: false`) or this is a tenant the
+   user has not logged into, fall back to the browser flow below.
+
+**Flow (one MCP tool per step — cheap, no images):**
+1. `ats_status` → confirm `connected` + `logged_in`; note `selector_version`.
+2. `ats_detect` → confirm `ats: "workday"` and the current `step`.
+3. `ats_upload_resume` → it returns the file input selector + `native_file_dialog:true`
+   (extensions cannot set file inputs); call claude-in-chrome `file_upload` with the
+   picked PDF on that selector. Wait ~3s for auto-fill.
+4. Per step: `ats_read_form` → get visible `{label,type,value,required,options,id}`
+   → build a `{labelFragment: value}` map from `profile.md` → `ats_fill_form(map)`.
+   - Authorized to work in India → Yes; visa sponsorship → No; notice/CTC/experience
+     from `profile.md`; Voluntary Disclosures → "Prefer not to say".
+   - For a required field not derivable from `profile.md`/`resumes/base.md`, use the
+     **Questionnaire Unknown Field** escalation below before skipping.
+5. `ats_next_step` → advances and returns `step_after` + `has_errors`. If
+   `has_errors`, re-`ats_read_form`, fix flagged fields, retry.
+6. Repeat 4–5 through My Information → My Experience → Application Questions →
+   Voluntary Disclosures → Review.
+7. Interactive: `ats_read_form` the review step, print a one-line summary, wait for
+   "yes". Nightly: `ats_submit` → check `submitted: true`.
+8. Log with `db_batch_insert.py --apps` (note: "Workday via ats-extension MCP").
+
+**Selector drift:** if `ats_read_form` returns 0 fields or `ats_status`
+`selector_version` is unexpected, run `python3 vendor/ats-extension/server/audit.py`
+(or `verify.py`), fix `count=0`/invalid-CSS entries in
+`vendor/ats-extension/extension/selectors/workday.js`, bump `SELECTOR_VERSION`,
+reload the extension, refresh the tab.
+
+---
+
+## Fallback (browser automation) — only when the extension is disconnected
+
+Use the screenshot/coordinate browser flow below ONLY when `ats-extension` is not
+connected, or for a tenant the user has not yet logged into. This is the legacy
+path; prefer the MCP path above.
 
 ## Authentication flow (in order — stop at first that works)
 

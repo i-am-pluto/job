@@ -37,14 +37,14 @@ Apply to any external job portal. Called by the LinkedIn skill for external-appl
 
 Email: `parikshit.p2002@gmail.com` (from `profile.md`)
 
-Password for new account creation: generate a strong password using the pattern `<SiteAbbrev>@Pk#<YYYY>` (e.g. `Tesc0@Pk#2026`). Rules:
-- Min 12 chars, mix upper/lower/digit/symbol
-- Never reuse across sites — vary the site abbreviation prefix
-- After creating the account, save the password in the DB notes for that application:
-  ```bash
-  python3 scripts/db.py update-status --company "X" --role "Y" --platform "Z" \
-    --status Applied --notes "account: parikshit.p2002@gmail.com pwd=<generated>"
-  ```
+Password for new account creation: generate using pattern `<SiteAbbrev>@Pk#<YYYY>` (e.g. `Tesc0@Pk#2026`). Min 12 chars, upper/lower/digit/symbol.
+
+**Before creating a new account:** check `data/ats-credentials.md` — an account may already exist for that portal.
+
+**After creating an account:** append to `data/ats-credentials.md`:
+```
+| Portal Name | parikshit.p2002@gmail.com | <generated-password> | YYYY-MM-DD | notes |
+```
 
 Use credentials only for legitimate ATS portals (careers.*, greenhouse.io, lever.co, workday.com, smartrecruiters.com, workable.com). Never enter on phishing-suspected pages.
 

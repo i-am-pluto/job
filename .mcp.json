@@ -3,6 +3,10 @@
     "linkedin-extension": {
       "command": "python3",
       "args": ["vendor/linkedin-extension/server/main.py"]
+    },
+    "ats-extension": {
+      "command": "python3",
+      "args": ["vendor/ats-extension/server/main.py"]
     }
   }
 }

@@ -180,6 +180,50 @@ async def linkedin_open_job(job_id: str) -> dict:
 
 
 # ------------------------------------------------------------------ #
+# Easy Apply — hybrid (extension handles modal; caller uses file_upload for resume)
+# ------------------------------------------------------------------ #
+@mcp.tool()
+async def linkedin_start_easy_apply(job_id: str) -> dict:
+    """Start the Easy Apply flow for a job already open in the LinkedIn tab.
+
+    Clicks the Easy Apply button, dismisses the "Save this application?" interstitial,
+    fills the Contact step (pre-filled), and advances to the Resume step. Returns state
+    so the caller can use mcp__claude-in-chrome__file_upload for the resume input (Chrome
+    MV3 blocks programmatic file selection from extensions).
+
+    Args:
+        job_id: numeric job ID (from linkedin_read_jobs or the jobs/view/<id>/ URL)
+    Returns:
+        {success, modal_open, step, file_input_visible, file_input_selector,
+         has_existing_resume, error}
+    """
+    return await bridge.send("startEasyApply", {"job_id": job_id}, timeout=30)
+
+
+@mcp.tool()
+async def linkedin_continue_easy_apply(
+    answers: dict = None, submit: bool = True
+) -> dict:
+    """Continue Easy Apply after the resume upload step has been handled externally.
+
+    Fills any additional question fields, navigates through remaining steps, and submits.
+    Call this after mcp__claude-in-chrome__file_upload has attached the resume PDF.
+
+    Args:
+        answers: dict mapping field label substrings to values,
+                 e.g. {"notice period": "30", "current ctc": "1200000"}
+        submit:  True to click Submit application (default). False to stop at Review.
+    Returns:
+        {success, submitted, steps_traversed, error}
+    """
+    return await bridge.send(
+        "continueEasyApply",
+        {"answers": answers or {}, "submit": submit},
+        timeout=60,
+    )
+
+
+# ------------------------------------------------------------------ #
 # Debug / selector-repair tooling
 # ------------------------------------------------------------------ #
 @mcp.tool()

@@ -12,14 +12,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
-
-from dotenv import load_dotenv
-
-load_dotenv()
 import re
 import subprocess
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Iterable
 
@@ -196,6 +193,7 @@ def parse_profile_answers(profile_text: str) -> dict:
         "notice_days": _first_number(_line_value(profile_text, "Notice period")),
         "work_authorization_india": _line_value(profile_text, "Authorized to work in India"),
         "highest_education": _line_value(profile_text, "Highest education"),
+        "total_experience": _first_number(_line_value(profile_text, "Experience")) or "2",
         "skill_years": skill_years,
     }
 
@@ -405,51 +403,118 @@ def search_jobs(jc, pages: int, job_age: int) -> list[JobRecord]:
     return jobs
 
 
-def answer_questionnaire(jc, raw_job, questionnaire, sid: str, profile_answers: dict, source: str):
-    def answer_for(question: dict):
+UNKNOWNS_FILE = REPO_ROOT / "data" / "naukri_agent_unknowns.json"
+
+
+def _normalize_retry_answer(question: dict, value):
+    """Coerce an agent-supplied retry answer into the shape Naukri expects.
+
+    Free-text questions -> the literal string. Select questions -> a list of
+    option KEYS, accepting the agent giving either keys, option values, or a
+    bare/listed mix.
+    """
+    options = question.get("answerOption") or {}
+    if not options:
+        return value
+    candidates = value if isinstance(value, list) else [value]
+    keys: list[str] = []
+    for cand in candidates:
+        s = str(cand).strip()
+        if s in options:                       # already a valid key
+            keys.append(s)
+            continue
+        for k, v in options.items():           # match against option label
+            if str(v).strip().lower() == s.lower():
+                keys.append(k)
+                break
+    return keys or value
+
+
+def build_answers(questionnaire: list[dict], profile_answers: dict, retry_answers: dict | None = None) -> tuple[dict, list[dict]]:
+    """Map questionnaire questions to answers.
+
+    Returns (answers_by_id, unknown_questions).
+    - answers_by_id: questionId -> answer value for successfully mapped questions
+    - unknown_questions: list of question dicts that could not be answered
+
+    If retry_answers is provided (questionId -> value from agent retry), those
+    are used for previously-unknown questions.
+    """
+    unknown: list[dict] = []
+
+    def answer_for(question: dict) -> str | list | None:
+        qid = question.get("questionId")
+        if retry_answers and qid and qid in retry_answers:
+            return _normalize_retry_answer(question, retry_answers[qid])
+
         qtext = (question.get("questionName") or "").lower()
-        qtype = (question.get("questionType") or "").lower()
         options = question.get("answerOption") or {}
 
-        if "current ctc" in qtext or "current salary" in qtext:
-            return profile_answers["current_ctc"]
-        if "expected ctc" in qtext or "expected salary" in qtext:
+        def pick_option(*substrings):
+            for key, value in options.items():
+                v = (value or "").lower()
+                if any(s and s in v for s in substrings):
+                    return [key]
+            return None
+
+        if any(t in qtext for t in ("ctc", "salary", "compensation", "package")):
+            if "current" in qtext or "present" in qtext:
+                return profile_answers["current_ctc"]
             return profile_answers["expected_ctc"]
+
         if "notice" in qtext:
             if options:
                 for key, value in options.items():
                     if profile_answers["notice_days"] and profile_answers["notice_days"] in value:
                         return [key]
-                for key, value in options.items():
-                    if "2 month" in value.lower() or "60" in value:
-                        return [key]
+                picked = pick_option("2 month", "60")
+                if picked:
+                    return picked
             return profile_answers["notice_days"]
+
         if "authorized" in qtext and "india" in qtext:
-            if options:
-                for key, value in options.items():
-                    if "yes" in value.lower():
-                        return [key]
-            return profile_answers["work_authorization_india"] or "Yes"
+            return pick_option("yes") or profile_answers["work_authorization_india"] or "Yes"
+
         if "highest" in qtext and "qualification" in qtext:
             return profile_answers["highest_education"]
+
+        if "location" in qtext or ("city" in qtext and "experience" not in qtext):
+            home = (profile_answers["location"] or "").split(",")[0].strip().lower()
+            return pick_option(home) or profile_answers["location"] or "Bangalore"
+
+        if "ex-" in qtext or "ex infy" in qtext or "ex infosys" in qtext or "ex-infosys" in qtext \
+                or "employee id" in qtext or ("ex " in qtext and "employee" in qtext):
+            return pick_option("no") or "NA"
+
+        if "contract" in qtext:
+            return pick_option("yes") or "Yes"
+
         for skill, years in profile_answers["skill_years"].items():
             if skill in qtext and "experience" in qtext:
                 return years
-        if qtype == "text box":
-            return None
+
+        if "experience" in qtext and any(t in qtext for t in ("year", "overall", "total", "how many", "how much")):
+            return profile_answers["total_experience"]
+
         if options:
-            for key, value in options.items():
-                if "yes" in value.lower():
-                    return [key]
+            picked = pick_option("yes")
+            if picked:
+                return picked
+
         return None
 
-    answers = {}
+    answers: dict = {}
     for question in questionnaire:
         value = answer_for(question)
         if value in (None, ""):
-            raise ValueError(f"Unknown questionnaire field: {question.get('questionName')}")
-        answers[question["questionId"]] = value
+            unknown.append(question)
+        else:
+            answers[question["questionId"]] = value
+    return answers, unknown
 
+
+def submit_answers(jc, raw_job, answers: dict, sid: str, source: str) -> dict:
+    """POST answered questionnaire to Naukri apply endpoint."""
     from src.client.job_client import APPLY_SRC_MAP
     from src.config.constants import APPLY_JOB_URL
 
@@ -478,6 +543,31 @@ def answer_questionnaire(jc, raw_job, questionnaire, sid: str, profile_answers: 
     return response.json()
 
 
+def save_unknowns(jobs_unknowns: list[dict]) -> None:
+    """Append jobs with unanswered questions to the unknowns file for agent review."""
+    existing = []
+    if UNKNOWNS_FILE.exists():
+        try:
+            existing = json.loads(UNKNOWNS_FILE.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            existing = []
+    existing.extend(jobs_unknowns)
+    UNKNOWNS_FILE.write_text(json.dumps(existing, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"\n  ✦ Saved {len(jobs_unknowns)} job(s) with unanswered questions to {UNKNOWNS_FILE}")
+
+
+def load_retry_answers(path: str | Path) -> dict[str, str | list]:
+    """Load agent-answered questions file (job_id -> {questionId -> answer})."""
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    if isinstance(raw, list):
+        result = {}
+        for entry in raw:
+            if "answers" in entry:
+                result[entry["job_id"]] = entry["answers"]
+        return result
+    return raw
+
+
 def run(args: argparse.Namespace) -> int:
     profile_answers = parse_profile_answers(PROFILE_PATH.read_text(encoding="utf-8"))
     existing = get_existing_applications()
@@ -497,6 +587,12 @@ def run(args: argparse.Namespace) -> int:
     applied = []
     skipped = []
     blocked = []
+    jobs_unknowns = []
+
+    # Pre-load agent retry answers if flag provided
+    retry_map: dict | None = None
+    if args.retry_unanswered:
+        retry_map = load_retry_answers(args.retry_unanswered)
 
     for job in jobs:
         if len(applied) >= args.limit:
@@ -533,12 +629,32 @@ def run(args: argparse.Namespace) -> int:
         first_result = (result.get("jobs") or [{}])[0]
         if first_result.get("questionnaire"):
             sid = time.strftime("%Y%m%d%H%M%S") + "0000000"
-            try:
-                answer_questionnaire(jc, raw_job, first_result["questionnaire"], sid, profile_answers, source="search")
-            except ValueError as exc:
-                blocked.append((job, str(exc)))
-                save_pipeline(job, str(exc))
+            job_retry = retry_map.get(raw_job.job_id) if retry_map else None
+            answers, unknown = build_answers(first_result["questionnaire"], profile_answers, retry_answers=job_retry)
+            if unknown:
+                jobs_unknowns.append({
+                    "timestamp": datetime.now().isoformat(),
+                    "job_id": raw_job.job_id,
+                    "company": job.company,
+                    "title": job.title,
+                    "apply_link": job.apply_link,
+                    "questions": [
+                        {
+                            "questionId": q.get("questionId"),
+                            "questionName": q.get("questionName"),
+                            # Full {key: value} map so the agent returns the option
+                            # KEY (Naukri wants [key] for selects), not just the label.
+                            "answerOption": q.get("answerOption", {}),
+                            "questionType": q.get("questionType"),
+                            # How to format the retry answer for this question.
+                            "answerFormat": "list_of_option_keys" if q.get("answerOption") else "free_text",
+                        }
+                        for q in unknown
+                    ],
+                })
+                blocked.append((job, f"agent answers needed ({len(unknown)} question(s))"))
                 continue
+            submit_answers(jc, raw_job, answers, sid, source="search")
 
         payload = build_db_payload(job, resume_used=resume, notes=notes)
         applied_batch.append(payload)
@@ -549,14 +665,17 @@ def run(args: argparse.Namespace) -> int:
             flush_applications(applied_batch, dry_run=False)
             applied_batch.clear()
 
+    if jobs_unknowns and not args.dry_run and not args.retry_unanswered:
+        save_unknowns(jobs_unknowns)
+
     if applied_batch:
         flush_applications(applied_batch, dry_run=args.dry_run or args.no_apply)
 
-    print_report(applied, skipped, blocked)
+    print_report(applied, skipped, blocked, jobs_unknowns)
     return 0
 
 
-def print_report(applied: list[JobRecord], skipped: list[tuple[JobRecord, str]], blocked: list[tuple[JobRecord, str]]) -> None:
+def print_report(applied: list[JobRecord], skipped: list[tuple[JobRecord, str]], blocked: list[tuple[JobRecord, str]], jobs_unknowns: list | None = None) -> None:
     print("\n## Naukri Run")
     print(f"\n### Applied ({len(applied)} jobs)")
     for job in applied:
@@ -564,9 +683,15 @@ def print_report(applied: list[JobRecord], skipped: list[tuple[JobRecord, str]],
     print(f"\n### Skipped ({len(skipped)} jobs)")
     for job, reason in skipped[:50]:
         print(f"- {job.company} | {job.title} | {reason}")
-    print(f"\n### Saved to pipeline ({len(blocked)} jobs)")
-    for job, reason in blocked:
-        print(f"- {job.company} | {job.title} | {reason} | {job.apply_link}")
+    unknowns_count = len(jobs_unknowns) if jobs_unknowns else 0
+    blocked_count = len(blocked) - unknowns_count
+    if blocked_count > 0:
+        print(f"\n### Saved to pipeline ({blocked_count} jobs)")
+        for job, reason in blocked:
+            if "agent answers needed" not in reason:
+                print(f"- {job.company} | {job.title} | {reason} | {job.apply_link}")
+    if unknowns_count > 0:
+        print(f"\n### Needs agent answers ({unknowns_count} jobs) — see data/naukri_agent_unknowns.json")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -577,6 +702,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pages", type=int, default=2, help="Search pages per keyword.")
     parser.add_argument("--job-age", type=int, default=14, help="Naukri jobAge filter in days.")
     parser.add_argument("--allow-external-pipeline", action="store_true", help="Save external redirects to data/pipeline.md.")
+    parser.add_argument("--retry-unanswered", type=str, default=None,
+                        help="Path to agent-answered JSON file; retry jobs with provided answers.")
     parser.set_defaults(browser_fallback=False)
     return parser
 

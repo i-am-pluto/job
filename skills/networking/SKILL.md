@@ -39,18 +39,24 @@ python3 scripts/db_networking.py summary
 
 ## Phase 1 - SCAN
 
-Rotate one keyword per run, cycling through:
+Run ALL keyword rotations below (not just one). LinkedIn throttles results per query — running all rotations maximizes unique leads.
 
 1. `hiring backend engineer bangalore`
 2. `hiring software engineer bangalore`
 3. `we are hiring backend developer`
 4. `SDE backend openings bangalore`
+5. `backend engineer hiring remote India`
+6. `software engineer openings India 2026`
+7. `looking for backend developer Java Spring`
+8. `hiring SDE2 distributed systems India`
 
-Call:
+Call each:
 
 ```text
 linkedin_search_posts(keywords="<KEYWORD>", date_filter="past-week", limit=15)
 ```
+
+Deduplicate by `author_url` across all keyword results before scoring.
 
 This returns `{posts:[{author_name, author_url, author_degree, author_title, body,
 post_url, posted_at}]}` — structured, no manual page parsing. Use `author_url` as the
@@ -80,7 +86,7 @@ Name | Degree | Title | Company | Profile URL | Role/team signal | Score reason
 
 ## Phase 2 - CONNECT
 
-For each candidate, max 10 per run:
+For each candidate, max 20 per run (user-authorized; check pending invite count < 80 before each send):
 
 1. Prepare a note of 300 characters or fewer:
 

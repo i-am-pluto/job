@@ -432,6 +432,151 @@
     },
 
     // --------------------------------------------------------------- //
+    // Easy Apply — hybrid approach (extension handles all except file input)
+    // --------------------------------------------------------------- //
+
+    // Phase 1 of Easy Apply: click button, dismiss interstitial, fill contact step,
+    // advance to resume step. Returns state so the caller can use file_upload for the
+    // resume input (Chrome MV3 blocks programmatic file selection from extensions).
+    async startEasyApply({ job_id } = {}) {
+      const target = `${S.BASE}/jobs/view/${job_id}/`;
+      if (!location.href.startsWith(target)) return { _navigate: target };
+
+      // Find and click the Easy Apply button (text-based — hashed classes are unstable).
+      const eaBtn =
+        btnByText(/Easy Apply|LinkedIn Apply/i) ||
+        document.querySelector("[aria-label*='Easy Apply']");
+      if (!eaBtn || !isVisible(eaBtn)) {
+        return { success: false, error: "Easy Apply button not found on this job page." };
+      }
+      eaBtn.click();
+      await sleep(1800);
+
+      // Dismiss "Save this application?" interstitial if it appeared.
+      // The × close icon keeps the underlying modal open; Discard closes both.
+      // LinkedIn uses aria-label="Dismiss" on the interstitial's × button.
+      const dismissBtn =
+        btnByLabel("Dismiss") ||
+        [...document.querySelectorAll("button")].find(
+          (b) => isVisible(b) && /^[×x✕]$/.test(b.textContent.trim())
+        );
+      if (dismissBtn && isVisible(dismissBtn)) {
+        dismissBtn.click();
+        await sleep(900);
+      }
+
+      // Confirm modal is open.
+      const modal =
+        document.querySelector("div[role='dialog']") ||
+        document.querySelector("[class*='artdeco-modal']");
+      if (!modal || !isVisible(modal)) {
+        return { success: false, error: "Easy Apply modal did not open after click." };
+      }
+
+      // Advance through Contact step (pre-filled) by clicking Next.
+      const nextBtn =
+        btnByText(/^Next$/i, modal) ||
+        btnByLabel("Continue to next step", modal);
+      if (nextBtn && isVisible(nextBtn)) {
+        nextBtn.click();
+        await sleep(1200);
+      }
+
+      // Detect resume step: look for a visible file input or "Upload resume" button.
+      const fileInput = document.querySelector("input[type='file']");
+      const fileInputVisible = !!(fileInput && isVisible(fileInput));
+      const hasExistingResume = !!(
+        btnByText(/Change resume|Select a resume/i, modal) ||
+        document.querySelector("[class*='resume-picker']")
+      );
+
+      return {
+        success: true,
+        modal_open: true,
+        step: fileInputVisible ? "resume_upload" : (hasExistingResume ? "resume_select" : "questions"),
+        file_input_visible: fileInputVisible,
+        file_input_selector: fileInputVisible ? "input[type='file']" : null,
+        has_existing_resume: hasExistingResume,
+      };
+    },
+
+    // Phase 2 of Easy Apply: call AFTER the caller has handled file upload via
+    // claude-in-chrome file_upload. Fills additional question fields, clicks Next
+    // through remaining steps, and submits. answers = {labelSubstring: value}.
+    async continueEasyApply({ answers = {}, submit = true } = {}) {
+      const modal =
+        document.querySelector("div[role='dialog']") ||
+        document.querySelector("[class*='artdeco-modal']");
+      if (!modal || !isVisible(modal)) {
+        return { success: false, error: "Easy Apply modal not found." };
+      }
+
+      // If we're still on the resume step, click Next first.
+      const resumeNext =
+        btnByText(/^Next$/i, modal) ||
+        btnByLabel("Continue to next step", modal);
+      if (resumeNext && isVisible(resumeNext)) {
+        resumeNext.click();
+        await sleep(1000);
+      }
+
+      // Fill any visible answer fields.
+      for (const [labelFragment, value] of Object.entries(answers)) {
+        const inputs = [...modal.querySelectorAll("input, select, textarea")].filter(isVisible);
+        for (const inp of inputs) {
+          const id = inp.id;
+          const labelEl = id ? modal.querySelector(`label[for='${CSS.escape(id)}']`) : null;
+          const parentText = inp.closest("[class]")?.textContent || "";
+          const matches =
+            (labelEl && labelEl.textContent.toLowerCase().includes(labelFragment.toLowerCase())) ||
+            parentText.toLowerCase().includes(labelFragment.toLowerCase());
+          if (!matches) continue;
+          if (inp.tagName === "SELECT") {
+            inp.value = value;
+            inp.dispatchEvent(new Event("change", { bubbles: true }));
+          } else {
+            inp.focus();
+            inp.value = "";
+            document.execCommand && document.execCommand("insertText", false, String(value));
+            if (!inp.value) inp.value = String(value);
+            inp.dispatchEvent(new InputEvent("input", { bubbles: true }));
+          }
+          await sleep(200);
+          break;
+        }
+      }
+
+      // Navigate through remaining steps and submit.
+      let steps = 0;
+      while (steps < 10) {
+        const submitBtn = btnByText(/^Submit application$/i, modal);
+        const reviewBtn = btnByText(/^Review$/i, modal);
+        const nextBtn =
+          btnByText(/^Next$/i, modal) || btnByLabel("Continue to next step", modal);
+
+        if (submit && submitBtn && isVisible(submitBtn)) {
+          submitBtn.click();
+          await sleep(1500);
+          // Dismiss post-submit confirmation dialog if it appears.
+          const doneBtn = btnByText(/^Done$/i) || btnByLabel("Dismiss", document);
+          if (doneBtn && isVisible(doneBtn)) doneBtn.click();
+          return { success: true, submitted: true, steps_traversed: steps };
+        } else if (reviewBtn && isVisible(reviewBtn)) {
+          reviewBtn.click();
+          await sleep(1000);
+        } else if (nextBtn && isVisible(nextBtn)) {
+          nextBtn.click();
+          await sleep(1000);
+        } else {
+          break;
+        }
+        steps++;
+      }
+
+      return { success: true, submitted: false, steps_traversed: steps };
+    },
+
+    // --------------------------------------------------------------- //
     // Debug / selector-repair tooling
     // --------------------------------------------------------------- //
 
