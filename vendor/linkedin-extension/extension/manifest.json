@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "LinkedIn Control Suite",
+  "version": "1.0.0",
+  "description": "Drives the user's logged-in LinkedIn session for the job-search MCP server. Connects out to a local WebSocket bridge and runs commands against the live DOM.",
+  "permissions": ["scripting", "tabs", "storage", "activeTab", "alarms"],
+  "host_permissions": ["https://www.linkedin.com/*"],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/*"],
+      "js": ["selectors.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "128": "icon.png"
+  }
+}

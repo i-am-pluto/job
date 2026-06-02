@@ -1,7 +1,7 @@
 ---
 name: networking
 description: This skill should be used when the user asks to run LinkedIn networking outreach, scan LinkedIn hiring posts, send recruiter or hiring-manager connection requests, detect accepted LinkedIn invites, or message accepted networking contacts with a resume.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # LinkedIn Networking Outreach Skill
@@ -9,6 +9,18 @@ version: 1.0.0
 Automate the user's LinkedIn networking workflow for backend hiring posts: scan recent posts, send personalized connection requests, detect accepted invites, and message accepted contacts with a selected resume.
 
 **Working directory:** `/Users/parikshit/Documents/code/job`
+
+## Control surface — MCP tools first
+
+The `linkedin-extension` MCP server drives the user's logged-in Chrome with cheap,
+structured tools. Use it for every phase; fall back to claude-in-chrome only when a
+tool returns an error envelope or for the resume-PDF attachment (see Phase 4).
+
+- `linkedin_status()` → confirm `connected:true, logged_in:true` first. If down, run the whole skill via claude-in-chrome and note it.
+- `linkedin_search_posts(keywords, date_filter="past-week", limit=15)` → SCAN (Phase 1).
+- `linkedin_connect(profile_url, note)` → CONNECT (Phase 2).
+- `linkedin_get_sent_invites()` → ACCEPTED_SCAN (Phase 3).
+- `linkedin_send_message(profile_url, message)` → MESSAGE text (Phase 4). **Attachment caveat:** Chrome blocks programmatic file selection, so the resume PDF cannot be attached by the tool — send the text via the tool, then attach the PDF via claude-in-chrome, OR send the whole message via claude-in-chrome.
 
 **Tracking commands:**
 
@@ -19,8 +31,6 @@ python3 scripts/db_networking.py list --status invite_sent
 python3 scripts/db_networking.py update-status --linkedin-slug "slug" --status accepted --notes "Confirmed 1st degree"
 python3 scripts/db_networking.py summary
 ```
-
-Use browser page text first. Use screenshots only when element visibility or coordinates cannot be determined from page text or interactive refs.
 
 ## Run Modes
 
@@ -36,21 +46,17 @@ Rotate one keyword per run, cycling through:
 3. `we are hiring backend developer`
 4. `SDE backend openings bangalore`
 
-Open:
+Call:
 
 ```text
-https://www.linkedin.com/search/results/content/?keywords=<URL_ENCODED_KEYWORD>&sortBy=%22date_posted%22&datePosted=%22past-week%22
+linkedin_search_posts(keywords="<KEYWORD>", date_filter="past-week", limit=15)
 ```
 
-Read page text and parse post blocks in this shape:
+This returns `{posts:[{author_name, author_url, author_degree, author_title, body,
+post_url, posted_at}]}` — structured, no manual page parsing. Use `author_url` as the
+profile URL, `author_title` as title, first 200 chars of `body` as the post snippet.
 
-```text
-Name • Degree
-Title
-Post text
-```
-
-Extract: name, degree, profile URL when available, title, company if obvious, and the first 200 characters of post text.
+Fallback (extension down): open `https://www.linkedin.com/search/results/content/?keywords=<URL_ENCODED_KEYWORD>&sortBy=%22date_posted%22&datePosted=%22past-week%22` via claude-in-chrome and parse page text.
 
 Filter out:
 
@@ -76,20 +82,28 @@ Name | Degree | Title | Company | Profile URL | Role/team signal | Score reason
 
 For each candidate, max 10 per run:
 
-1. Open the profile URL.
-2. Check visible state:
-   - `Pending` means skip and do not write a duplicate DB row.
-   - `1st` means mark/check for MESSAGE phase.
-   - Direct `Connect` button or `More` -> `Connect` means eligible.
-3. Prepare a note of 300 characters or fewer:
+1. Prepare a note of 300 characters or fewer:
 
 ```text
 Hi [First], saw your post about hiring [role/team]. I'm a backend engineer with 2 yrs exp in Go/Python/distributed systems - would love to connect and explore fit.
 ```
 
-4. In interactive mode, show `Name | Title | Company | note` and wait for confirmation before clicking Send.
-5. Click Connect, Add a note, type the note, and send.
-6. Record the invite immediately:
+2. In interactive mode, show `Name | Title | Company | note` and wait for confirmation before sending.
+3. Send the request:
+
+```text
+linkedin_connect(profile_url="<author_url>", note="<note>")
+```
+
+Returns `{success, status, error}`. `status:"pending"` means an invite already
+exists — skip and do not write a duplicate DB row. `success:false` with a
+"Connect button not found" error means already-connected (handle in MESSAGE phase)
+or blocked — skip. On `status:"invite_sent"` continue to record.
+
+Fallback (extension down or connect error): open the profile via claude-in-chrome,
+check state (Pending/1st/Connect), click Connect → Add a note → type → Send.
+
+4. Record the invite immediately:
 
 ```bash
 python3 scripts/db_networking.py add --name "..." --linkedin-url "..." --company "..." --title "..." --post-snippet "..." --invite-note "..."
@@ -97,15 +111,16 @@ python3 scripts/db_networking.py add --name "..." --linkedin-url "..." --company
 
 ## Phase 3 - ACCEPTED_SCAN
 
-Detect accepted invites by comparing the current sent-invites page with DB rows:
+Detect accepted invites by comparing the current sent-invites list with DB rows:
 
-1. Open `https://www.linkedin.com/mynetwork/invitation-manager/sent/`.
-2. Extract all names currently pending.
-3. Run `python3 scripts/db_networking.py list --status invite_sent`.
-4. For DB names missing from the pending page, open the saved profile URL and confirm:
+1. Call `linkedin_get_sent_invites()` → `{pending:[{name, profile_url}], total}`.
+2. Run `python3 scripts/db_networking.py list --status invite_sent`.
+3. For DB names missing from the pending list, open the saved profile URL (via
+   `linkedin_send_message` dry-check is not ideal — use claude-in-chrome to view the
+   profile) and confirm:
    - `1st` degree or visible Message button -> accepted.
    - Connect button with no Pending state -> declined or withdrawn.
-5. Update DB:
+4. Update DB:
 
 ```bash
 python3 scripts/db_networking.py update-status --linkedin-slug "slug" --status accepted --notes "Confirmed 1st degree"
@@ -124,9 +139,7 @@ Message at most 5 accepted contacts per run.
 
 For each contact:
 
-1. Open the profile URL.
-2. Click Message and wait for the compose window.
-3. Choose a resume with:
+1. Choose a resume with:
 
 ```bash
 python3 scripts/pick_resume.py "<role/team/company/post snippet>"
@@ -134,7 +147,7 @@ python3 scripts/pick_resume.py "<role/team/company/post snippet>"
 
 Use the returned PDF path. Do not tune a resume unless the user explicitly asks; networking follow-up should stay lightweight.
 
-4. Draft this message, adjusting `[role/team at company]`:
+2. Draft this message, adjusting `[role/team at company]`:
 
 ```text
 Hi [First],
@@ -151,9 +164,17 @@ Best,
 Parikshit
 ```
 
-5. Attach the PDF with the available browser file-upload tool.
-6. Interactive mode: stop before Send and ask for confirmation. Nightly mode: send autonomously.
-7. Mark complete:
+3. Interactive mode: show `Name | message | resume` and stop before Send. Nightly mode: send autonomously.
+
+4. **Send — attachment matters here, so prefer claude-in-chrome for the full
+   message+attach.** The `linkedin_send_message` tool sends text reliably but CANNOT
+   attach the PDF (Chrome blocks file selection):
+   - **Recommended:** open the profile via claude-in-chrome, click Message, type the
+     message, attach the resume PDF with the file-upload tool, then send.
+   - **Text-only fallback:** `linkedin_send_message(profile_url, message)` (returns
+     `error:"attachment_unsupported"`), then attach the PDF via claude-in-chrome — only
+     if the claude-in-chrome compose path is unavailable.
+5. Mark complete:
 
 ```bash
 python3 scripts/db_networking.py update-status --linkedin-slug "slug" --status message_sent --resume-used "output/base.pdf" --notes "resume: output/base.pdf"

@@ -19,11 +19,11 @@ This is persistent operational memory for the job-search CEO agent. Keep it focu
 
 | Platform | Recent signal | Applied this run | Blocker | Next adjustment |
 | --- | --- | --- | --- | --- |
-| Instahyre | Queue exhausted 2026-05-30 (FIFTH consecutive run). 25 total apps in DB. Feed has not refreshed in 5 runs. | 0 (queue empty) | Matching feed not refreshing for this account. | Consider disabling Instahyre stage until account shows new cards. Spend < 3 tool calls on check only. |
-| Naukri | 15 applied 2026-05-30 via NopeRi (Quantum Phinance, Intellemo, Verdantis, Amazon, Nxtwave, Tekskills x3, Bluescope, Tracxn, ti Steps, Arshil LLC, Oriserve, EY, Nexgensis). 4 skipped. 138 external redirects saved to pipeline. 69 total Naukri apps in DB. | 15 (target met) | 138 external redirect URLs saved to pipeline but not yet applied. Pipeline backlog is primary untapped apply source. | Route pipeline Greenhouse URLs to greenhouse-agent; route other ATS URLs to generic-apply-agent in batches of 3-5. |
-| LinkedIn | 0 applied 2026-05-30. Kake application blocked by custom non-interactable dropdown (~40 tool calls consumed). | 0 | Custom dropdown form components blocked Easy Apply. ~40 tool calls wasted. | Pre-check form interactability before spending tool calls. Skip jobs with custom non-standard dropdown immediately. Max 10 tool calls per job hard cap. |
-| Greenhouse | 0 applied. Board scan NOT due until 2026-06-05. New entries found via Gmail: Lenskart (Software Developer - Java Backend) and Razorpay (Full Stack Builder). Razorpay is assessment-gated. | 0 (scan not due) | Board scan due 2026-06-05. Razorpay assessment-gated (human action needed). | Board scan on 2026-06-05 will replenish queue. Lenskart and Razorpay added via gmail confirmation emails. |
-| Networking | 0 invites sent 2026-05-30. 83 pending invites exceeds 80-invite gate threshold. | 0 (gate blocked) | Pending invite count 83 > 80 threshold gate. | Wait for accepts/withdrawals before next outreach attempt. Check count at run start. |
+| Instahyre | FORMALLY SUSPENDED. 7 consecutive empty runs (last: 2026-06-01). 25 total apps in DB. Feed not refreshing. | 0 (SUSPENDED) | Matching feed not refreshing for this account. | Do not allocate any budget. Reallocate 15-slot budget to LinkedIn (cap 10-15) or Greenhouse. |
+| Naukri | 0 applied 2026-06-02 via NopeRi (login failure: HTTPCloakError after 5 retries). 92 total Naukri apps in DB. | 0 | CRITICAL: NopeRi API adapter login failure. HTTPCloakError: Request failed after 5 retries. No browser fallback used. | Investigate NopeRi adapter connectivity/auth before next run. May require token refresh or adapter restart. |
+| LinkedIn | 5 confirmed applied 2026-06-02 (from email confirmation records — applied earlier today: Salt, Egnyte, Deltek, Joblet-AI, Honeywell Aerospace). 7 total LinkedIn apps in DB. | 5 (from email records; 0 via this scheduled task) | LinkedIn agent tool-call budget exhausted during scan; no additional submits in this run. | LinkedIn is the primary active channel while Naukri/Instahyre are blocked. Increase cap to 10-15 Easy Apply. |
+| Greenhouse | 0 applied 2026-06-02. 10 Airbnb jobs queued. Board scan gate: 2026-06-08. | 0 | Sandbox network restriction: boards-api.greenhouse.io blocked by allowlist. Requires desktop-native browser. | Apply queued Airbnb jobs from desktop-native browser. Next board scan: 2026-06-08. |
+| Networking | Not attempted 2026-06-02 (budget/blocker priority). | 0 | Budget exhausted on blocker investigation. | Resume next run if budget allows and pending invites < 80. |
 
 ## Pipeline Processing (STAGE 4 — after Naukri/Instahyre, before LinkedIn)
 
@@ -98,6 +98,36 @@ These are blocked only because browser permissions have not been granted. They s
 | --- | --- | --- |
 | G-P (GlobalPay) | LinkedIn Easy Apply | Greenhouse modal embedded inside LinkedIn — extract boards.greenhouse.io URL; apply via greenhouse skill |
 
+## Budget Efficiency Retrospective (2026-06-02 — nightly)
+
+| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
+| --- | ---: | ---: | --- | --- |
+| Naukri | 0 | 0 | N/A | NopeRi login failure (HTTPCloakError after 5 retries). No browser fallback. |
+| Instahyre | 0 | 0 | N/A | Formally suspended — correctly skipped. |
+| LinkedIn | budget exhausted during scan | 0 (5 from pre-run email records) | N/A | Tool call budget exhausted; 5 confirmed applies from earlier today, 0 new in this run. |
+| Greenhouse | ~5 est. | 0 | N/A | Sandbox network restriction: boards-api.greenhouse.io blocked by allowlist. 10 Airbnb jobs still queued. |
+| Networking | 0 | 0 | N/A | Not attempted — budget/blocker priority. |
+
+## Budget Efficiency Retrospective (2026-06-01 — nightly)
+
+| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
+| --- | ---: | ---: | --- | --- |
+| Naukri | ~27 est. | 9 | ~3x (on target ratio, but below quota) | Below quota of 15. Keyword/dupe exhaustion likely. Needs expanded keywords. |
+| Instahyre | 0 | 0 | N/A | Formally suspended — correctly skipped. |
+| LinkedIn | ~N/A | 0 | N/A | Browser timeout on Easy Apply modal — new failure mode. |
+| Greenhouse | ~15 est. | 0 | N/A | 10 Airbnb jobs scored/queued; browser constraints on form fill. |
+| Networking | ~8 est. | 1 invited, 1 accepted found, 1 message sent | N/A | 1 message attempted to Dhanraj G. Prince Dubey status unclear. |
+
+## Budget Efficiency Retrospective (2026-05-30 — third run, nightly)
+
+| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
+| --- | ---: | ---: | --- | --- |
+| Naukri | ~42 | 14 | 3x (on target) | API error on 15th slot. 13 skipped (dupes + mobile/DevOps). |
+| Instahyre | < 3 | 0 | N/A | Queue empty x6 — FORMALLY SUSPENDED. |
+| LinkedIn | 0 | 0 | N/A | No pipeline leads submitted. 5 leads saved. |
+| Greenhouse | ~15 | 0 | N/A | CEO override triggered, 19 boards scanned, browser blocked on Stripe and others. |
+| Networking | ~8 | 6 invites, 2 accepted | N/A | Gate disabled. Premium paywall blocked messaging. |
+
 ## Budget Efficiency Retrospective (2026-05-30 — second run, user overrides)
 
 | Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
@@ -153,6 +183,14 @@ Target efficiency:
 
 ## Run Learnings
 
+- 2026-06-02 (nightly): Naukri 0 applied — NopeRi API adapter login failure (HTTPCloakError after 5 retries). Greenhouse 0 applied — sandbox network restriction (boards-api.greenhouse.io blocked by allowlist); 10 Airbnb jobs still queued. LinkedIn 5 confirmed from email records (Salt, Egnyte, Deltek, Joblet-AI, Honeywell Aerospace) but 0 new in this run (tool budget exhausted during scan). Status: Revolut->Rejected, Amazon SDE-II->Rejected. ACTION NEEDED: BiztechAnalytics assessment (re-confirmed), Turing assessment (re-confirmed), Amazon recruiters follow-up. Total DB: 138. Critical blockers: NopeRi adapter broken, Greenhouse API unreachable from sandbox.
+- 2026-06-02: NopeRi adapter is experiencing HTTP connectivity failure (HTTPCloakError: Request failed after 5 retries). This is a new infrastructure blocker. Possible causes: auth token expired, IP-level block, or adapter service outage. Must investigate/fix before Naukri can resume. With Instahyre also suspended and Greenhouse sandbox-blocked, LinkedIn is the only functioning active-apply channel.
+- 2026-06-02: Greenhouse boards-api.greenhouse.io is blocked by the sandbox network allowlist. The Greenhouse agent cannot score or apply to any queued jobs from the scheduled task sandbox. Requires desktop-native browser with unrestricted network access. This is a structural constraint — do not retry from sandbox.
+- 2026-06-01 (nightly): Naukri 9 applied via NopeRi (below target of 15 — needs investigation). Instahyre empty x7 — remains formally suspended. LinkedIn 0 applied; browser timeout on Easy Apply modal. Greenhouse 0 applied — 10 Airbnb jobs scored/queued but browser constraints blocked form fill; gate skip until 2026-06-08. Networking: 1 invited (Muskan Singh), 1 accepted found (Dhanraj G/Quickhyre CTO), 1 message sent. Status: Amazon->Rejected, BiztechAnalytics->Assessment (ACTION NEEDED), Turing->Assessment (ACTION NEEDED). Total: 9 applies. WARN: LinkedIn browser timeout is a new blocker; Naukri below quota; Greenhouse queue needs browser fix.
+- 2026-06-01: Airbnb Greenhouse queue (10 jobs) ready to apply — blocked only by browser constraints. These are high-value (Airbnb engineering) and must be prioritized in next run. Greenhouse board scan gate is 2026-06-08 — not due yet, but queue processing is independent of scan gate.
+- 2026-06-01: BiztechAnalytics "Project Terminus" assessment and Turing Python/FastAPI assessment both received same run — two concurrent assessments require human attention. Add to action needed list.
+- 2026-05-30 (third run, nightly): Naukri 14 applied via NopeRi (API error on 15th). Instahyre empty x6 — formally suspended. LinkedIn 0 applied; 5 leads saved to pipeline. Greenhouse 0 applied — CEO override triggered 19-board scan (gate overridden at 14 total < 30), browser blocked. Networking: gate disabled by user, 6 invites sent, 2 accepted (Dhanraj G/Quickhyre CTO, Prince Dubey/PYXIDIA), 0 messages — LinkedIn Premium paywall blocks non-first-degree messaging. Total: 14 applies. WARN: Instahyre officially suspended, Greenhouse browser permissions required.
+- 2026-05-30 (third run, nightly): LinkedIn Premium paywall confirmed as blocker for networking messages to non-first-degree connections. Accepted contacts Dhanraj G (Quickhyre CTO) and Prince Dubey (PYXIDIA) cannot be messaged autonomously. Human must send manual outreach or upgrade to Premium.
 - 2026-05-30 (second run, user overrides): Naukri and Instahyre skipped by user override. LinkedIn pre-scored 5 candidates (Acumatica SDE 4, Kake Senior SWE LLM 5, Bright Matrix .Net 4, Jobgether Python 4, TAVIG Digital SWE 4) but exhausted tool budget before submitting any. All 5 saved to pipeline.md. Greenhouse: Lenskart was a dupe (applied 2026-05-29); Razorpay assessment-gated. Networking blocked at 83 pending invites. Total: 0 applies this run. CRISIS threshold not triggered (user intentionally overrode all primary platforms).
 - 2026-05-30: Naukri hit target of 15 applies via NopeRi (Quantum Phinance, Intellemo, Verdantis, Amazon, Nxtwave, Tekskills x3, Bluescope, Tracxn, ti Steps, Arshil LLC, Oriserve, EY, Nexgensis). 4 skipped. 138 external redirects saved to pipeline — pipeline backlog continues to grow.
 - 2026-05-30: Instahyre empty for FIFTH consecutive run. Evaluate whether to suspend Instahyre stage entirely. Feed is likely not refreshing for this account. Set a human alert.
@@ -202,45 +240,47 @@ Target efficiency:
 
 ## Action Items Backlog (requires human)
 
+- BiztechAnalytics "Project Terminus": assessment invitation received 2026-06-01. Complete assessment manually. (naukri, gmail: "Project Terminus - Assessment@BiztechAnalytics")
+- Turing Python/FastAPI BE Developer: assessment login link received 2026-06-01. Complete assessment on desktop. (linkedin, gmail: "Your login link is ready: Complete your Turing assessment on desktop")
 - Goldman Sachs: incomplete application "Software Engineering - Data, Lakehouse and AI Data Platform Engineer" — decide to complete or abandon.
 - EPAM India: "Confirm your application" email — click required, agent cannot action.
 - Amazon recruiter Jiani Ji: reply pending after resume sent May 13 — consider follow-up.
 - Amazon recruiter Manikanta Bellapu: reply pending after resume sent May 13 — consider follow-up.
 - Singapore recruiter Adam Modelski (Legacy Resourcing): reply pending after resume sent May 20 — consider follow-up.
 - LinkedIn Narendra K. (Honeywell) outreach: sent Wed 7:25 AM — decide whether to reply.
-- Greenhouse browser permissions: grant permissions for boards.greenhouse.io before 2026-06-05 board scan. (Stripe: do NOT grant — permanent skip.)
+- Greenhouse browser permissions: grant permissions for boards.greenhouse.io before 2026-06-08 board scan. (Stripe: do NOT grant — permanent skip.)
 - Peak XV Senior Full-Stack Engineer (LinkedIn job 4419048709): Top Applicant signal — check if Easy Apply is still open and prioritize.
 - Oracle "Continue to apply" email (GSRecruiting@oracle.com): decide to complete or ignore.
 - G-P Staff AI Fullstack: extract Greenhouse board URL from LinkedIn job and apply directly via greenhouse skill (score 5 — high priority).
 - Razorpay Full Stack Builder (Greenhouse, added 2026-05-30): assessment-gated — monitor for HackerRank invite. Complete assessment, then re-queue.
-- LinkedIn networking: 83 pending invites currently blocking outreach gate. Consider withdrawing stale invites (sent > 3 weeks ago with no response) to drop below 80 threshold.
+- LinkedIn networking: check pending invite count. If >= 80, withdraw stale invites (sent > 3 weeks ago) before next networking run. Dhanraj G (Quickhyre CTO) message was attempted this run — confirm receipt.
 
 ## Status Updates Needed in DB
 
-- EPAM India — Sr Java Software Developer — Rejected (gmail: "Unfortunately...")
-- foodpanda — Backend Software Engineer II — Rejected (gmail: "after careful consideration...")
+- EPAM India — Sr Java Software Developer — Rejected (gmail: "Unfortunately...") — not found in DB, may use different name spelling; check manually
+- foodpanda — Backend Software Engineer II — Rejected (gmail: "after careful consideration...") — not found in DB; check manually
+- Turing — Python/FastAPI BE Developer — Assessment received (linkedin, gmail: "Your login link is ready: Complete your Turing assessment on desktop") — ACTION NEEDED, not yet in DB if not applied via tracked platform
 
 ## Next Run Checklist
 
-- [ ] CRITICAL: LinkedIn pipeline has 5 pre-scored leads (Acumatica SDE 4, Kake Senior SWE LLM 5, Bright Matrix .Net 4, Jobgether Python 4, TAVIG Digital SWE 4) saved to pipeline.md from 2026-05-30 run. Prioritize these in next LinkedIn session. NOTE: Kake may have custom dropdown — skip immediately if form is not interactable after 2 attempts.
-- [ ] CRITICAL: The 2026-04-12 pipeline batch (87 entries) is DEAD. Do not reprocess. Mark all 2026-04-12 entries as Cleared in pipeline.md before adding any new ones.
-- [ ] CRITICAL: Instahyre empty x5 consecutive. Consider suspending Instahyre stage entirely until human confirms account shows fresh cards. Check in < 3 tool calls; if empty again, log and skip with no retry.
-- [ ] CRITICAL: LinkedIn per-job hard cap of 10 tool calls must be enforced without exception. If any form element is not interactable after 2 attempts, skip that job immediately. Do NOT spend 40 calls on one blocked job.
-- [ ] PIPELINE (high priority): data/pipeline.md has 138+ new Naukri redirect entries from today's run plus prior batches. Route Greenhouse-pattern URLs (boards.greenhouse.io) to greenhouse-agent (API score first), other ATS to generic-apply-agent in batches of 3-5.
-- [ ] Greenhouse board scan due 2026-06-05 — trigger on that date. Queue may have Lenskart (Software Developer - Java Backend) and Razorpay (Full Stack Builder, assessment-gated). Lenskart: apply directly. Razorpay: human must complete assessment first.
-- [ ] Grant browser permissions for boards.greenhouse.io — needed for 2026-06-05 Greenhouse board scan. Stripe: do NOT grant — permanent CEO skip.
-- [ ] Networking: check pending invite count before run. Do not attempt outreach if count >= 80. Today was 83 — must drop below 80 before next networking run.
-- [ ] Fix DB status for EPAM India and foodpanda: both need Rejected status. Use `python3 scripts/db.py list` to confirm exact strings, then `db.py update-status`.
-- [ ] Naukri keywords (in order): "Java backend", "Spring Boot", "backend engineer", "platform engineer", "Node.js backend". Never use "Java developer".
+- [ ] CRITICAL: Fix NopeRi adapter before next Naukri run. HTTPCloakError after 5 retries — likely auth token expired or service outage. Naukri is completely blocked until this is resolved. Investigate: check adapter logs, refresh auth token, verify NopeRi service status.
+- [ ] CRITICAL: Greenhouse apply requires desktop-native browser (boards-api.greenhouse.io blocked in sandbox). 10 Airbnb jobs queued. Run from desktop with unrestricted network. Board scan gate: 2026-06-08.
+- [ ] CRITICAL: Instahyre FORMALLY SUSPENDED (7 consecutive empty runs). Do NOT allocate any budget. Reallocate the 15-slot budget to LinkedIn (cap 10-15 Easy Apply). Do not check Instahyre queue.
+- [ ] CRITICAL: LinkedIn is the only functioning active-apply channel. Increase LinkedIn cap to 10-15 Easy Apply. Per-job hard cap 10 tool calls. Pre-score all cards before opening any job.
+- [ ] ACTION NEEDED: BiztechAnalytics — "Project Terminus" assessment invitation received. Complete assessment manually.
+- [ ] ACTION NEEDED: Turing — Python/FastAPI BE Developer — assessment login link received. Complete assessment on desktop.
+- [ ] ACTION NEEDED: Revolut Platform Engineer (Java) and Amazon SDE-II both Rejected — already updated in DB. Review pipeline for similar role opportunities.
+- [ ] NETWORKING: Confirm Dhanraj G (Quickhyre CTO) received message sent prior run. Check Prince Dubey (PYXIDIA) status. LinkedIn Premium paywall may still block non-first-degree messaging.
+- [ ] PIPELINE (high priority): data/pipeline.md has accumulated Naukri redirect entries. Route Greenhouse-pattern URLs (boards.greenhouse.io) to greenhouse-agent (API score first), other ATS to generic-apply-agent in batches of 3-5.
+- [ ] Grant browser permissions for boards.greenhouse.io — needed for 2026-06-08 Greenhouse board scan. Stripe: do NOT grant — permanent CEO skip.
+- [ ] Networking: check pending invite count before run. Do not attempt outreach if count >= 80.
+- [ ] Fix DB status for EPAM India and foodpanda: both need Rejected status. Use `python3 scripts/db.py list` to confirm exact company name strings, then `db.py update-status`.
 - [ ] Naukri agent: re-read `python3 scripts/db.py list` immediately before building the NopeRi submission batch (not just at plan time). Prevents dupe attempts.
-- [ ] LinkedIn: allocate at least 15 tool calls or skip entirely. Use narrow keywords: "Backend Developer India", "SDE2 India", "Java Spring Boot developer India". Pre-score ALL cards before opening any. Use coordinate-click not JS click.
 - [ ] LinkedIn: detect Greenhouse-inside-LinkedIn before spending tool calls. Save to pipeline with Greenhouse URL, skip. Max 5 tool calls per detection+save.
 - [ ] Run AFTER 7pm IST — session limits reset at 7pm IST on all platforms.
-- [ ] Run order: STATUS (Gmail incremental), Naukri first (NopeRi, quota 15), Instahyre second (queue check < 3 calls; skip if empty), PIPELINE stage third (score/route pending entries), LinkedIn fourth (Easy Apply only, cap 3-5, per-job hard cap 10 tool calls; skip if budget < 15 calls), Greenhouse fifth (board scan due 2026-06-05; otherwise known-blocker check only), Networking last (only if pending invites < 80).
+- [ ] Run order: STATUS (Gmail incremental), Naukri (only if NopeRi fixed — quota 15), Greenhouse (queued Airbnb apply from desktop; board scan only if 2026-06-08 gate passes), PIPELINE stage (score/route pending entries), LinkedIn (Easy Apply, cap 10-15, per-job hard cap 10 tool calls), Networking last (only if pending invites < 80).
 - [ ] Refresh dup list from DB before each platform: `python3 scripts/db.py list`.
 - [ ] Do NOT use `--naukri` flag in db_batch_insert.py — it does not exist. Log Naukri count in --summary text only.
 - [ ] Remove or mark inactive Greenhouse boards: grammarly, notion, plaid, ramp, rippling, segment (all returned 404).
 - [ ] Flush Naukri apps with `scripts/db_batch_insert.py --apps` after every 3-4 successful applications.
-- [ ] Greenhouse board scan next eligible: 2026-06-05 — do not trigger before that date.
-- [ ] Instahyre: check matching=true&status=0 first; if empty, confirm in log in < 3 tool calls and skip. Do not attempt Interested queue. Do not retry or investigate.
 - [ ] NopeRi --limit enforcement: verify adapter respects --limit 15. Check DB delta after batch (compare DB total before/after).

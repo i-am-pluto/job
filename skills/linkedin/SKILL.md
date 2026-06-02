@@ -1,12 +1,28 @@
 ---
 name: linkedin
 description: This skill should be used when discovering LinkedIn jobs, handling LinkedIn Easy Apply, following LinkedIn external Apply links, or saving LinkedIn leads to the pipeline.
-version: 1.1.1
+version: 1.2.0
 ---
 
 # LinkedIn Job Application Skill
 
 Apply to backend jobs on LinkedIn only as a bounded fallback after Naukri and Instahyre. Easy Apply is the default path; external/company-site flows are skipped or saved unless the controller explicitly assigns external LinkedIn budget.
+
+## Control surface — MCP tools first, claude-in-chrome for forms
+
+The `linkedin-extension` MCP server drives the user's already-logged-in Chrome
+session with cheap, structured tools. **Use it for scan and JD reading; use
+claude-in-chrome only for the adaptive Easy Apply form modal.**
+
+- `linkedin_status()` → confirm `connected:true, logged_in:true` before starting. If
+  `connected:false`, the extension/server is down — fall back to claude-in-chrome for
+  the whole run and note it.
+- `linkedin_open_jobs(keywords, location="India", easy_apply_only=true, date_posted="past-week")` → opens the jobs search.
+- `linkedin_read_jobs(limit=25)` → `{jobs:[{job_id,title,company,location,easy_apply,promoted,url}]}` in ONE call (replaces the manual scroll + read_page).
+- `linkedin_open_job(job_id)` → `{title,company,location,description,easy_apply,apply_url}` for scoring (replaces click + get_page_text).
+
+The actual Easy Apply multi-step modal is NOT covered by the MCP tools (it varies
+per job) — fill it with claude-in-chrome as before (Path B).
 
 **Trigger:** "apply on LinkedIn", "find LinkedIn jobs", "search LinkedIn for [role]", or a LinkedIn jobs URL.
 **Target:** 3-5 submitted fallback Easy Apply applications per nightly run, only after Naukri and Instahyre finish or stop with budget remaining.
@@ -16,7 +32,7 @@ Apply to backend jobs on LinkedIn only as a bounded fallback after Naukri and In
 
 LinkedIn is the fallback APPLY agent. Do not run it in parallel with Naukri or Instahyre.
 
-- Budget: 12 tool calls / 8k tokens max.
+- Budget: 12 tool calls / 8k tokens max. MCP scan tools (`open_jobs`/`read_jobs`/`open_job`) are cheap — spend the budget on the Easy Apply form steps.
 - Stop at 5 successful submitted applications, or earlier if the controller passes a smaller remaining budget.
 - Use Easy Apply only by default. Use external/company-site flows only when the controller explicitly assigns external LinkedIn budget.
 - Save complex external ATS, login, CAPTCHA, Workday, password, or multi-page flows to `data/pipeline.md` instead of spending the session.
@@ -48,37 +64,41 @@ Read `profile.md`, `resumes/base.md`. Then use the **Identity And Contact**, **C
 
 LinkedIn status checks are disabled in nightly runs. Do not check LinkedIn notifications or messages unless the user explicitly asks for LinkedIn status.
 
-## Phase 1 — Bulk scan (ONE read_page, score all, no JD opens yet)
+## Phase 1 — Bulk scan (MCP tools, score all, no JD opens yet)
 
-Navigate to Easy Apply search URL:
+For each keyword, call:
 ```
-https://www.linkedin.com/jobs/search/?keywords=<KW>&location=India&f_TPR=r604800&f_E=2%2C3%2C4&f_WT=1%2C2%2C3&f_AL=true&sortBy=DD
+linkedin_open_jobs(keywords="<KW>", location="India", easy_apply_only=true, date_posted="past-week")
+linkedin_read_jobs(limit=25)
 ```
 
-Keyword matrix (run in order until 15 applied):
+Keyword matrix (run in order until budget met):
 `Backend Engineer` → `Software Development Engineer` → `Backend Developer` → `SDE2 Backend` → `Distributed Systems Engineer` → `Platform Engineer Backend` → `Cloud Backend Engineer` → `AI Backend Engineer`
 
-**Lazy-load all cards first (one JS call):**
-```javascript
-const p=document.querySelector('.jobs-search-results-list');
-if(p){let s=0;const t=setInterval(()=>{p.scrollTop+=1500;if(++s>8)clearInterval(t);},400);}
-```
-Wait 4 seconds, then: `read_page(filter=all, depth=6, ref_id=<list element ref>)`
+`linkedin_read_jobs` returns all cards as structured JSON (`job_id, title, company,
+location, easy_apply, promoted, url`) — no manual scroll or read_page needed. **Score
+all cards now from title+company alone, keep only `easy_apply:true`. Do not open any
+JD yet.** Build ordered apply queue (score ≥ 4, exclude companies already in
+`python3 scripts/db.py list` output).
 
-From the single read, extract for each card: title, company, location, Easy Apply badge (yes/no), card link ref. **Score all cards now from title+company alone. Do not open any JD yet.** Build ordered apply queue (score ≥ 4, exclude companies already in `python3 scripts/db.py list` output).
-
-Page deeper with `&start=25`, `&start=50` if needed.
+Fallback: if `linkedin_status` reported `connected:false` or `read_jobs` returns an
+error envelope, scan via claude-in-chrome (navigate the Easy Apply search URL
+`https://www.linkedin.com/jobs/search/?keywords=<KW>&location=India&f_TPR=r604800&f_E=2%2C3%2C4&f_WT=1%2C2%2C3&f_AL=true&sortBy=DD`, lazy-load, `read_page`) and note the fallback.
 
 ---
 
 ## Phase 2 — Per-job apply loop
 
-For each job in queue, execute one `browser_batch` to open + read:
+For each job in queue, read the JD:
 ```
-[click card link ref] → [wait 2s] → [get_page_text on tab]
+linkedin_open_job(job_id="<id from read_jobs>")
 ```
+This navigates to the job and returns `{title, company, location, description,
+easy_apply, apply_url}`. From `description`: confirm no hard 5+ yr minimum, confirm
+not frontend/mobile. If skip → next job. The tab is now ON the job page, ready for the
+Easy Apply modal (Path B) via claude-in-chrome.
 
-From the JD text: confirm no hard 5+ yr minimum, confirm not frontend/mobile. If skip → dismiss card, next.
+Fallback (extension down): `browser_batch: [click card link ref] → [wait 2s] → [get_page_text on tab]`.
 
 **Easy Apply rule:** In normal nightly runs, apply only through Easy Apply. If LinkedIn shows an external **Apply** button, save or skip it unless the controller explicitly assigned external LinkedIn budget. Do not search company sites from LinkedIn during the fallback run.
 
@@ -120,7 +140,8 @@ Skip/save URL to `data/pipeline.md` only if: Google login and email sign-up are 
 **Exact tool call sequence (verified 2026-05-26):**
 
 ```
-1. navigate to https://www.linkedin.com/jobs/view/<JOB_ID>/   (direct view URL skips list pane)
+1. tab is already on https://www.linkedin.com/jobs/view/<JOB_ID>/ from linkedin_open_job
+   (if not, navigate there directly — the view URL skips the list pane)
 2. screenshot → locate "Easy Apply" button coordinates
 3. computer.left_click at those coordinates
 4. wait 3s, screenshot — if "Save this application?" popup is visible:
