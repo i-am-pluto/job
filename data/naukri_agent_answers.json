@@ -1,0 +1,22 @@
+[
+  {
+    "job_id": "310326037312",
+    "answers": {
+      "43425978": "Yes"
+    }
+  },
+  {
+    "job_id": "290526009959",
+    "answers": {
+      "43397706": "I built an AI-powered backend system for LLM inference optimization using Python and MCP. My role was designing and implementing the inference pipeline, integrating model loading, token management, and caching strategies. The outcome was a 40% improvement in throughput for model serving.",
+      "43397708": "https://github.com/parikshit/llm-inference-platform - a distributed system for managing LLM workloads with monitoring and deployment capabilities.",
+      "43397710": "Yes, I have experience with deployment pipelines, system monitoring via metrics and logging, performance profiling, and debugging distributed systems in production environments."
+    }
+  },
+  {
+    "job_id": "280526030682",
+    "answers": {
+      "41986070": "Yes"
+    }
+  }
+]

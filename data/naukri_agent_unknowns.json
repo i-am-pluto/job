@@ -1,0 +1,64 @@
+[
+  {
+    "timestamp": "2026-06-03T02:21:06.165446",
+    "job_id": "310326037312",
+    "company": "Thyrocare",
+    "title": "Software Engineer",
+    "apply_link": "/job-listings-software-engineer-thyrocare-bengaluru-1-to-3-years-310326037312",
+    "questions": [
+      {
+        "questionId": "43425978",
+        "questionName": "Are you  willing to relocate to Navi Mumbai?",
+        "answerOption": {},
+        "questionType": "Text Box",
+        "answerFormat": "free_text"
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-06-03T02:21:32.875422",
+    "job_id": "290526009959",
+    "company": "DivyaSree",
+    "title": "Founding Engineer - AI, Autonomous Systems, Aeromechanics & Infra",
+    "apply_link": "/job-listings-founding-engineer-ai-autonomous-systems-aeromechanics-infra-divyasree-hyderabad-bengaluru-0-to-2-years-290526009959",
+    "questions": [
+      {
+        "questionId": "43397706",
+        "questionName": "Describe one robotics, AI, embedded, or autonomous system you personally built. Mention your role and outcome.",
+        "answerOption": {},
+        "questionType": "Text Box",
+        "answerFormat": "free_text"
+      },
+      {
+        "questionId": "43397708",
+        "questionName": "Share any GitHub, portfolio, robotics project, deployed system, or research work you have contributed to.",
+        "answerOption": {},
+        "questionType": "Text Box",
+        "answerFormat": "free_text"
+      },
+      {
+        "questionId": "43397710",
+        "questionName": "Have you worked on hardware integration, deployment, debugging, telemetry, simulation, or field testing?",
+        "answerOption": {},
+        "questionType": "Text Box",
+        "answerFormat": "free_text"
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-06-03T02:21:37.727824",
+    "job_id": "280526030682",
+    "company": "Infosys",
+    "title": "Python Developer-Hyderabad",
+    "apply_link": "/job-listings-python-developer-hyderabad-infosys-hyderabad-2-to-7-years-280526030682",
+    "questions": [
+      {
+        "questionId": "41986070",
+        "questionName": "Are you willing to relocate to Hyderabad",
+        "answerOption": {},
+        "questionType": "Text Box",
+        "answerFormat": "free_text"
+      }
+    ]
+  }
+]

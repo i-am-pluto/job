@@ -253,11 +253,18 @@
         };
       }
       connectBtn.click();
-      await sleep(900);
+      await sleep(1100);
+
+      // The "Send without a note?" / invite modal. Scope all lookups to the dialog
+      // when present. LinkedIn now defaults to note-free invites; the primary CTA is
+      // usually labelled "Send" (sometimes "Send without a note" / "Send now").
+      const dialog =
+        [...document.querySelectorAll("div[role='dialog'], [class*='artdeco-modal']")]
+          .find(isVisible) || document;
 
       if (note) {
         const addNote =
-          btnByLabel("Add a note") || btnByText(/^Add a note$/);
+          btnByLabel("Add a note", dialog) || btnByText(/^Add a note$/, dialog);
         if (addNote) {
           addNote.click();
           const ta = await waitFor(S.NOTE_TEXTAREA, 5000);
@@ -269,18 +276,31 @@
           }
         }
       }
-      // Send: aria-label variants first, then text.
-      const send =
-        btnByLabel("Send invitation") ||
-        btnByLabel("Send now") ||
-        btnByLabel("Send without a note") ||
-        btnByText(/^Send(\s|$)/);
-      if (!isVisible(send)) {
-        return { success: false, error: "Send invitation button not found." };
+
+      // Find the Send button: aria-label variants first, then any visible button in
+      // the dialog whose text is a Send variant ("Send", "Send without a note", etc.).
+      const sendByLabel =
+        btnByLabel("Send invitation", dialog) ||
+        btnByLabel("Send without a note", dialog) ||
+        btnByLabel("Send now", dialog) ||
+        btnByLabel("Send", dialog);
+      const sendByText = [...dialog.querySelectorAll("button")]
+        .filter(isVisible)
+        .find((b) => /^send( without a note| now| invitation)?$/i.test(b.textContent.trim()));
+      const send = sendByLabel || sendByText;
+
+      if (send && isVisible(send)) {
+        send.click();
+        await sleep(700);
+        return { success: true, status: "invite_sent", error: null };
       }
-      send.click();
-      await sleep(700);
-      return { success: true, status: "invite_sent", error: null };
+
+      // No Send button and no modal — LinkedIn sometimes fires the invite immediately
+      // on the Connect click (note-free quick-invite). Treat a now-Pending state as sent.
+      if (btnByText(/^Pending$/)) {
+        return { success: true, status: "invite_sent", error: null };
+      }
+      return { success: false, error: "Send invitation button not found." };
     },
 
     async getSentInvites() {
@@ -426,7 +446,14 @@
         company,
         location: "",
         description,
-        easy_apply: !!btnByText(/Easy Apply/),
+        // SDUI flow: Easy Apply is an <a href=".../apply/?openSDUIApplyFlow=true">
+        // labelled "LinkedIn Apply to this job"; external apply opens a new tab / offsite.
+        easy_apply: !!(
+          [...document.querySelectorAll(
+            "a[href*='openSDUIApplyFlow'], a[href*='/jobs/view/'][href*='/apply/'], " +
+            "[aria-label*='LinkedIn Apply'], [aria-label*='Easy Apply']"
+          )].find(isVisible) || btnByText(/Easy Apply/)
+        ),
         apply_url: target,
       };
     },
@@ -439,22 +466,30 @@
     // advance to resume step. Returns state so the caller can use file_upload for the
     // resume input (Chrome MV3 blocks programmatic file selection from extensions).
     async startEasyApply({ job_id } = {}) {
+      // LinkedIn migrated to the SDUI apply flow (2026-06). The Easy Apply control is an
+      // <a href=".../jobs/view/<id>/apply/?openSDUIApplyFlow=true">. Verified 2026-06-03
+      // that this flow CANNOT be opened programmatically: synthetic .click() and real CDP
+      // clicks are no-ops, and navigating directly to the apply URL redirects back to
+      // /jobs/view/<id>/. The overlay only opens from a genuine, trusted user gesture the
+      // SPA router intercepts. We still detect the button (so callers can score/route),
+      // attempt a best-effort click, and report honestly if the surface never opens.
       const target = `${S.BASE}/jobs/view/${job_id}/`;
       if (!location.href.startsWith(target)) return { _navigate: target };
 
-      // Find and click the Easy Apply button (text-based — hashed classes are unstable).
       const eaBtn =
-        btnByText(/Easy Apply|LinkedIn Apply/i) ||
-        document.querySelector("[aria-label*='Easy Apply']");
+        [...document.querySelectorAll(
+          "a[href*='openSDUIApplyFlow'], a[href*='/apply/'], " +
+          "[aria-label*='LinkedIn Apply'], [aria-label*='Easy Apply']"
+        )].find(isVisible) ||
+        btnByText(/Easy Apply|LinkedIn Apply/i);
       if (!eaBtn || !isVisible(eaBtn)) {
         return { success: false, error: "Easy Apply button not found on this job page." };
       }
       eaBtn.click();
-      await sleep(1800);
+      await sleep(1600);
 
       // Dismiss "Save this application?" interstitial if it appeared.
-      // The × close icon keeps the underlying modal open; Discard closes both.
-      // LinkedIn uses aria-label="Dismiss" on the interstitial's × button.
+      // The × close icon keeps the underlying form open; Discard closes both.
       const dismissBtn =
         btnByLabel("Dismiss") ||
         [...document.querySelectorAll("button")].find(
@@ -465,12 +500,34 @@
         await sleep(900);
       }
 
-      // Confirm modal is open.
-      const modal =
-        document.querySelector("div[role='dialog']") ||
-        document.querySelector("[class*='artdeco-modal']");
+      // Locate the genuine apply surface — a dialog/modal or an explicit easy-apply
+      // form. Do NOT fall back to <main> or generic <form>: those always exist on the
+      // job page and would produce a FALSE success when the apply overlay never opened
+      // (SDUI gate). The surface must be a real apply container with apply-specific
+      // signals (a Submit/Review/Next control or a resume file input inside it).
+      const candidates = [...document.querySelectorAll(
+        "div[role='dialog'], [class*='artdeco-modal'], [class*='jobs-easy-apply'], " +
+        "form[class*='apply'], form[id*='apply'], div[data-test*='apply']"
+      )].filter(isVisible);
+      const modal = candidates.find((c) =>
+        c.querySelector("input[type='file']") ||
+        [...c.querySelectorAll("button")].some((b) =>
+          isVisible(b) && /^(submit application|review|next|continue)\b/i.test(b.textContent.trim())
+        )
+      ) || candidates.find(isVisible);
       if (!modal || !isVisible(modal)) {
-        return { success: false, error: "Easy Apply modal did not open after click." };
+        // Return diagnostics so the apply surface can be characterised on a live run.
+        return {
+          success: false,
+          sdui_gated: true,
+          error:
+            "SDUI apply overlay did not open. LinkedIn's new apply flow only opens from a " +
+            "genuine user click; programmatic clicks and direct apply-URL navigation are " +
+            "blocked (verified 2026-06-03). Apply to this job manually.",
+          url: location.href,
+          visible_buttons: [...document.querySelectorAll("button")]
+            .filter(isVisible).map((b) => b.textContent.trim()).filter(Boolean).slice(0, 25),
+        };
       }
 
       // Advance through Contact step (pre-filled) by clicking Next.
