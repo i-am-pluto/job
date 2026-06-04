@@ -24,6 +24,18 @@ Options:
 
 ## Run History
 
+### 2026-06-03 (third nightly run — networking-priority run)
+
+Gate: pending invites ~10 (well under 80 threshold — outreach proceeded). User steered this run to focus on networking.
+Posts scanned: 25+ hiring posts across 12 keyword rotations (linkedin-extension MCP timed out; fell back to claude-in-chrome for all scan/connect work — reliable).
+New qualified leads identified: 11 (recruiters/HMs/tech leads at Databricks, Zypp Electric, NuvertOS, Piquota Digital, Amazon, Disney, CIEL HR, Infor, Qburst, iPeople, techire ai).
+Invites sent: 11 (NO invite gate applied per user steering).
+Accepted detected: 0 new (Muskan Singh already connected, on 30-day message cooldown since 2026-06-02).
+Messages sent: 0 — no new accepted contacts eligible; resume pre-selected output/backend-systems.pdf for when pending invites accept.
+Blocked: Dhanraj G — slug `dhanraj-g` confirmed to resolve to wrong person (IBM Sr Consultant, not Quickhyre CTO). Human must provide correct LinkedIn URL.
+Skipped: various frontend/QA/non-tech leads screened out during scan scoring.
+Pending invites total: ~21 (11 new + ~10 prior).
+
 ### 2026-06-03 (second nightly run)
 
 Gate: pending invites ~10 (well under 80 threshold — outreach proceeded).
@@ -92,6 +104,19 @@ Messages sent: 0 — BLOCKED by LinkedIn Premium paywall (cannot message non-fir
 - DB slug `dhanraj-g` resolves to a different person (IBM Senior Consultant, not Quickhyre CTO). Slug collision — human must find correct LinkedIn URL for the Quickhyre CTO before next message attempt.
 - Muskan Singh (Think People Solutions) accepted invite and replied to prior message — warm lead, follow up if she asks for availability or resume clarification.
 - Mamleshwaram Chandra (PYXIDIA) — message delivered 2026-06-02 with base.pdf; he is actively posting Senior Product Engineer roles (Java/Spring Boot/AWS, Bangalore, 4-8 YOE).
+- linkedin-extension MCP tools (linkedin_search_posts, linkedin_connect) consistently time out during networking scans. Always fall back to claude-in-chrome for post scanning and connect actions — it is the reliable path. Do not retry MCP tools after first timeout.
+- Resume pre-selected for pending accepted contacts: output/backend-systems.pdf (confirmed 2026-06-03). Use this for all networking outreach messages until the next run changes the archetype mapping.
+
+### 2026-06-05 (nightly run — networking stage)
+
+Gate: pending invites ~21 (under 80 threshold — outreach permitted).
+Phase 1 SCAN: Blocked — linkedin-extension MCP timed out; claude-in-chrome fallback not executed this run. Stage should have proceeded with fallback immediately on timeout.
+Phase 2 CONNECT: 0 new invites sent (Phase 1 not executed).
+Phase 3 ACCEPTED_SCAN: 0 newly accepted invites detected. All 21 pending invites still outstanding.
+Phase 4 MESSAGE: 0 messages sent (no new eligible contacts). Muskan Singh on cooldown until 2026-07-02.
+Skipped: Dhanraj G (slug collision — resolves to IBM consultant).
+Resume pre-selected: output/backend-systems.pdf.
+Root cause: networking stage failed silently — agent did not trigger claude-in-chrome fallback after MCP timeout. Durable fix: on ANY linkedin-extension MCP tool timeout, immediately switch to claude-in-chrome for the remainder of the networking stage without waiting for a second timeout.
 
 ## 2026-06-03 Scan
 

@@ -1,0 +1,155 @@
+\documentclass[letterpaper,10pt]{article}
+
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{xcolor}
+
+% ---------- page geometry ----------
+\usepackage[
+  left=0.55in, right=0.55in, top=0.42in, bottom=0.42in
+]{geometry}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% ---------- section formatting ----------
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\large
+}{}{0em}{}[\color{black}\titlerule\vspace{-5pt}]
+
+% ---------- custom commands ----------
+\newcommand{\resumeItem}[1]{
+  \item\small{#1 \vspace{-2pt}}
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{1pt}\item
+    \begin{tabular*}{0.99\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & {\small #2 $\;|\;$ #4} \\
+    \end{tabular*}\vspace{-6pt}
+}
+
+\newcommand{\resumeProject}[2]{
+  \vspace{1pt}\item
+    \begin{tabular*}{0.99\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & {\small\textit{#2}} \\
+    \end{tabular*}\vspace{-6pt}
+}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=0.2in,itemsep=1pt,topsep=2pt]}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-4pt}}
+
+\begin{document}
+
+% ======================= HEADING =======================
+\begin{center}
+    {\Huge \scshape Parikshit Dabas} \\ \vspace{5pt}
+    \small
+    +91 95603 07106 $\enspace|\enspace$
+    \href{mailto:parikshit.p2002@gmail.com}{parikshit.p2002@gmail.com} $\enspace|\enspace$
+    \href{https://www.linkedin.com/in/parikshit-dabas-0899b0203/}{\underline{LinkedIn}} $\enspace|\enspace$
+    \href{https://github.com/i-am-pluto}{\underline{GitHub}}
+\end{center}
+
+% ======================= SUMMARY =======================
+\section{Summary}
+\small{Software Engineer with 2+ years building production backend systems and developer platforms at Arcesium, a fintech firm serving institutional asset managers. Focused on system design, API ownership, distributed systems, and end-to-end service reliability. Strong problem-solving foundation with experience across the full lifecycle --- from design to on-call.}
+\vspace{2pt}
+
+% ======================= EDUCATION =======================
+\section{Education}
+\resumeSubHeadingListStart
+  \vspace{1pt}\item
+    \begin{tabular*}{0.99\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{Netaji Subhas University of Technology (NSUT), Delhi} & {\small 2020 -- 2024} \\
+    \end{tabular*}\vspace{-5pt}
+  \item {\small B.Tech, Computer Science with Minor in Artificial Intelligence \quad|\quad GPA: 8.5}
+  \vspace{1pt}
+  \small{\item \textbf{Coursework:} Data Structures \& Algorithms, Operating Systems, DBMS, Computer Networks, Distributed Systems, Compiler Design, Machine Learning, Deep Learning, Natural Language Processing, Computer Vision}
+\resumeSubHeadingListEnd
+
+% ======================= EXPERIENCE =======================
+\section{Experience}
+\resumeSubHeadingListStart
+
+  \resumeSubheading
+    {Arcesium --- Software Engineer}{Gurugram, India}
+    {Software Engineer}{Jun 2024 -- Present}
+  \vspace{-8pt}
+  \resumeItemListStart
+    \resumeItem{Designed and built a \textbf{multi-tenant data ingestion platform} --- designed the service architecture for tenant isolation, pluggable source handlers, schema validation, and fault-tolerant concurrent ingestion pipelines.}
+    \resumeItem{Built a \textbf{self-service schema management API} with backward-compatible schema evolution across heterogeneous storage backends --- eliminated a manual support dependency and cut client onboarding from \textbf{$\sim$3 weeks to 3--4 hours}.}
+    \resumeItem{Built and owned a \textbf{usage computation platform} --- designed an event-driven aggregation pipeline to meter resource consumption across client workloads and attribute costs per tenant for billing and chargeback.}
+    \resumeItem{Built \textbf{internal AI agents} for release engineering --- designed tool-use APIs and integrated across ticketing, source control, and messaging systems to automate release checks and reduce manual toil.}
+    \resumeItem{Improved service reliability by adapting backend systems to a \textbf{cell-based architecture} --- managed Kubernetes workloads and cloud infrastructure through IaC, scoped deployments per cell, and validated blast radius reduction through disaster recovery exercises.}
+    \resumeItem{Built \textbf{platform observability} from scratch --- defined SLIs, instrumented services, and set up dashboards and alerting for service health across production environments.}
+  \resumeItemListEnd
+
+  \resumeSubheading
+    {Arcesium --- Software Engineer}{Gurugram, India}
+    {Software Engineer}{Jan 2024 -- Jun 2024}
+  \vspace{-8pt}
+  \resumeItemListStart
+    \resumeItem{Built a \textbf{resource recommendation service} --- designed a data pipeline over job execution history and runtime metrics to auto-tune compute configurations, reducing batch workload failure rates by \textbf{$\sim$15\%}.}
+    \resumeItem{Architected it as an \textbf{extensible resource broker} --- proactively right-sizing Kubernetes workloads based on historical execution data, with a pluggable tuning layer that decoupled algorithms from the serving API.}
+  \resumeItemListEnd
+
+  \resumeSubheading
+    {Arcesium --- Software Engineer Intern}{Gurugram, India}
+    {Software Engineer Intern}{May 2023 -- Jul 2023}
+  \vspace{-8pt}
+  \resumeItemListStart
+    \resumeItem{Built a \textbf{report preview system} --- engineered bounded streaming with concurrency control to serve parallel previews over 50GB reports within a 4--6GB container, preventing memory exhaustion under load.}
+  \resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+% ======================= PROJECTS =======================
+\section{Projects}
+\resumeSubHeadingListStart
+  \resumeProject{Kubernetes Resource Broker}{Kotlin, Linux}
+  \vspace{-8pt}
+  \resumeItemListStart
+    \resumeItem{Built a Kubernetes resource broker for \textbf{proactive resource recommendation} --- right-sizes workloads from historical execution metrics and auto-patches deployments, complementing VPA and HPA. Engineered with connection pooling, batching, and async request handling, sustaining \textbf{100 TPS} under load.}
+  \resumeItemListEnd
+
+  \resumeProject{Container Runtime}{C, Linux}
+  \vspace{-8pt}
+  \resumeItemListStart
+    \resumeItem{Built a minimal container runtime from scratch using Linux namespaces and cgroups --- process isolation, filesystem mounts, network separation, and resource limits --- roughly equivalent to a stripped-down Docker.}
+  \resumeItemListEnd
+
+  \resumeProject{Indoor Navigation System}{Python, Computer Vision}
+  \vspace{-8pt}
+  \resumeItemListStart
+    \resumeItem{Built a real-time navigation assistant for visually impaired users using object detection and scene understanding, with audio guidance output and low-latency inference tuned for live camera input.}
+  \resumeItemListEnd
+\resumeSubHeadingListEnd
+
+% ======================= SKILLS =======================
+\section{Skills}
+\begin{itemize}[leftmargin=0.15in, label={}]
+  \small{\item{
+    \textbf{Languages:} Java, Kotlin, Python, C, SQL \\ \vspace{3pt}
+    \textbf{Backend:} Distributed systems, system design, REST APIs, microservices, Spring Boot \\ \vspace{3pt}
+    \textbf{Databases:} PostgreSQL, DynamoDB, Apache Cassandra, SQL \& NoSQL data modeling, query tuning, schema evolution \\ \vspace{3pt}
+    \textbf{Infrastructure:} Kubernetes, Docker, AWS, Terraform, CI/CD \\ \vspace{3pt}
+    \textbf{Core Systems:} Linux, operating systems, kernel internals, computer networks, containerization
+  }}
+\end{itemize}
+
+\end{document}

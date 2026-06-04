@@ -1,2 +1,6 @@
-
-- [LinkedIn SDUI apply flow](linkedin-sdui-apply-flow.md) — Easy Apply is now an <a> link, broke extension detection; fix needs reload + traversal still unverified
+- [Naukri learnings](naukri.md) — keyword performance, dup-check rule, questionnaire blocks, walk-in guidance
+- [Instahyre learnings](instahyre.md) — selector notes, popup behavior, queue exhaustion patterns
+- [LinkedIn apply flow](linkedin-sdui-apply-flow.md) — SDUI Easy Apply mechanics, gate status
+- [LinkedIn learnings](linkedin.md) — keyword performance, blocker notes, per-job budget cap
+- [Networking learnings](networking.md) — invite gate, cooldown rules, pending contacts, run history
+- [CEO memory](ceo.md) — platform health, quotas, priorities, DB tips

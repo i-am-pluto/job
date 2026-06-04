@@ -1,312 +1,75 @@
 # Job CEO Memory
 
-This is persistent operational memory for the job-search CEO agent. Keep it focused on durable run learnings, not profile facts. Profile facts belong in `profile.md`; resume facts belong in `resumes/*.md`.
+Persistent operational memory for the job-search CEO agent. Durable run learnings only — profile facts belong in `profile.md`.
 
 ## Current Priorities
 
-- Preserve quality threshold: apply only to score 4 or 5 roles.
-- Keep platform agents focused on backend/fullstack roles in India or India-compatible remote roles.
-- Prefer cached resumes unless a concrete JD justifies tuning.
+- Score threshold: apply only to score 4 or 5 roles.
+- Platforms: Naukri (NopeRi adapter), Instahyre (browser), LinkedIn (Easy Apply fallback 3-5), Networking.
+- Single resume: `output/base.pdf` for all platforms. Recompile from `resumes/base.tex` when changed.
 - Batch DB writes through helper scripts only.
-- Schedule or re-trigger nightly runs AFTER 7pm IST to avoid session-limit blocks on all three platforms.
-- Control token/session usage with sequential APPLY agents only. Never launch Naukri, Instahyre, and LinkedIn apply agents in parallel.
-- Prioritize Naukri first, then Instahyre, then LinkedIn only as a bounded 3-5 Easy Apply fallback if budget remains.
-- Nightly status checks are Gmail-only and incremental from `data/run-state.json`; portal status checks are manual/weekly only.
-- Greenhouse full board scans run at most once every 7 days using `data/run-state.json`; non-scan days can process queued pipeline jobs only.
-- Greenhouse: requires browser domain permission grants before autonomous apply is possible. Pre-check permission status before scheduling Greenhouse apply stage.
+- Run AFTER 7pm IST — session limits reset at that time.
+- Sequential APPLY agents only — never parallel.
+- Nightly status checks are Gmail-only and incremental from `data/run-state.json`.
 
 ## Platform Health
 
-| Platform | Recent signal | Applied this run | Blocker | Next adjustment |
+> Last updated: 2026-06-05
+
+| Platform | Status | Applied this run | Blocker | Notes |
 | --- | --- | --- | --- | --- |
-| Instahyre | FORMALLY SUSPENDED. 7+ consecutive empty runs. 25 total apps in DB. Feed not refreshing. | 0 (SUSPENDED) | Matching feed not refreshing for this account. | Do not allocate any budget. Reallocate 15-slot budget to LinkedIn (cap 10-15) or Greenhouse. |
-| Naukri | 30 applied 2026-06-03 via NopeRi (two batches + two-phase answer loop). 148 total Naukri apps in DB. Exceeded quota of 15 — adapter healthy. | 30 | None this run. 29 skipped (13 dupes, 10 DevOps/SRE, 6 mismatch). | Maintain broad keywords. Monitor dupe rate — rising as DB grows. ~248 external redirects saved to pipeline. |
-| LinkedIn | 0 applied 2026-06-03. SDUI apply flow migration confirmed. Extension detection fixed (button found). SDUI form traversal not rebuilt. ~9-16 Easy Apply candidates saved to pipeline. | 0 | LinkedIn migrated to SDUI apply flow. Synthetic .click() on anchor does not open modal. navigate-to-href + SDUI form traversal must be rebuilt before any autonomous submit. | CRITICAL: rebuild continueEasyApply for SDUI before next run. See data/memory/linkedin-sdui-apply-flow.md. Do not attempt Easy Apply until SDUI form traversal is verified. |
-| Greenhouse | 0 applied 2026-06-03. Board scan succeeded: 244 jobs discovered, 15 scored >=4. Apply blocked by iframe/React form. 10 queued to pipeline (Airbnb BE London, 9 Databricks). Board scan gate: 2026-06-10 (next eligible). | 0 | Greenhouse iframe/React form inputs not exposed to MCP tools. last_greenhouse_board_scan_at marked 2026-06-03. | Route queued pipeline URLs to generic-apply-agent. Fix MCP form access or use direct URL navigation + ats-extension. |
-| Networking | 0 invited (all 3 qualified candidates already 1st-degree). 0 messages sent. 0 accepted found. Dhanraj G corrected to declined (slug resolves to wrong person). | 0 invited, 0 messaged | All qualified scan targets already 1st-degree; MCP connect reported "Send invitation button not found". Pending invites ~10. | Post scan throttling continues. LinkedIn slug for Dhanraj G still unresolved — do not attempt message. Cooldown on prior message_sent contacts (30 days). |
+| Naukri | HEALTHY | 15 | None — run from user's machine. Sandbox HTTP 000 block persists for scheduled runs. | Broad backend keywords working: "Java backend", "Spring Boot", "backend engineer", "full stack developer". |
+| Instahyre | SUSPENDED | 0 | 7+ consecutive empty runs — matching feed not refreshing. | Do not allocate budget until user confirms feed has fresh jobs. |
+| LinkedIn | ACTIVE | 2 | Form issues + closed roles not pre-filtered. | Keep 3-5 fallback cap. Pre-check job status before attempting. 10-tool-call hard cap per job. |
+| Networking | PARTIAL | 0 | linkedin-extension MCP times out — always fall back to claude-in-chrome immediately. | 21 pending invites as of 2026-06-05. Resume for accepted: output/base.pdf. |
 
-## Pipeline Processing (STAGE 4 — after Naukri/Instahyre, before LinkedIn)
+## Agent Budgets
 
-`data/pipeline.md` accumulates external ATS redirects from Naukri scans, Greenhouse-inside-LinkedIn detections, and manually saved URLs. The CEO must process this as a dedicated stage every nightly run.
-
-**Who processes what:**
-- `boards.greenhouse.io` / `job-boards.greenhouse.io` URLs → route to greenhouse-agent (score via API first, no browser needed for scoring)
-- `jobs.lever.co` / `jobs.ashbyhq.com` / `apply.workable.com` / other ATS URLs → route to generic-apply-agent after CEO scores the title+role
-- Already-applied companies (check `db.py list`) → mark as `Applied` in pipeline.md and skip
-
-**CEO pipeline processing workflow:**
-1. Read `data/pipeline.md` — collect all rows with `Status: Pending`
-2. Dedupe against `python3 scripts/db.py list` — mark matches `Applied` in the table
-3. Score remaining rows: title + company → apply profile scoring rules. Skip score < 4.
-4. Split qualifying rows by ATS type (Greenhouse vs. other)
-5. For Greenhouse URLs: pass to greenhouse-agent batch (API scoring first, no browser until apply)
-6. For other ATS URLs: pass to generic-apply-agent in batches of 3-5 per run
-7. After processing, update `Status` in pipeline.md: `Applied`, `Skipped (score N)`, `Queued (next run)`, or `Blocked (reason)`
-8. Budget: ~10 tool calls for CEO pipeline triage + agent budgets per platform
-
-**Budget for pipeline apply agents:**
-- Greenhouse pipeline batch: up to 10 applications, 20 tool calls delegated to greenhouse-agent
-- Generic-apply pipeline batch: up to 5 applications, 15 tool calls each
-
-Note: The entire 2026-04-12 pipeline batch (87 entries: 33 Greenhouse, 14 Lever, 18 Ashby+Workable, 22 generic) is now DEAD — confirmed 2026-05-29. Do not reprocess these URLs. Lever entries returned 404 (expired). Greenhouse entries were US-only requiring sponsorship. Generic batch (Samsara, Toast, Palantir, Perplexity, Cohere, Notion, Replit, Onehouse) all US-only or seniority mismatch. Remove all 2026-04-12 entries from pipeline or mark Cleared.
-
-## Agent Budgets (revised 2026-05-29)
-
-| Agent | Budget | Stop rule | Efficiency note |
-| --- | --- | --- | --- |
-| CEO preflight | 6 tool calls / 8k tokens max | Return remaining quotas and dup list only. | — |
-| Status/Gmail | 6 tool calls / 5k tokens max | Incremental Gmail only; no portal status checks. | — |
-| Resume strategy | 3 tool calls / 4k tokens max | Reuse cached PDFs unless a concrete JD requires tuning. | — |
-| Naukri apply | 45 tool calls / 25k tokens max | Stop at 15 applied or budget limit. Flush every 3-4 apps. Re-read dup list before batch. | ~3 tool calls per apply expected via NopeRi. Budget allows ~12-15 applies plus scan overhead. |
-| Instahyre apply | 35 tool calls / 18k tokens max | Skip if matching queue empty (confirmed in < 5 tool calls); otherwise stop at 15 or budget. | Queue check costs 2-3 tool calls. If empty, use remaining 32 for other stage or stop. |
-| LinkedIn apply | 12 tool calls / 8k tokens max | Fallback only; Easy Apply only; cap 3-5. **Max 10 tool calls per individual job.** Pre-score ALL cards before opening any. | Budget breakdown: 3 calls for page scan/scoring, ~3 calls per Easy Apply submit. |
-| Greenhouse apply | 20 tool calls / 12k tokens max | Check known-blocker list first in < 5 calls. Only open browser if permissions confirmed. | If all queued jobs are known-blocked, report in < 5 calls and stop. Do not re-evaluate known blockers. |
-| Final log | 4 tool calls / 4k tokens max | Compact summary only; do not invoke long CEO log mode after failure. | — |
-
-If any stage reports `You've hit your session limit`, stop the run immediately after flushing already-applied jobs. Do not retry, do not spawn more agents, and do not run CEO log mode.
-
-## Known Permanent Skips
-
-Skip in 0 tool calls — structural, not fixable by permissions.
-
-| Company | Platform | Blocker |
+| Agent | Budget | Stop rule |
 | --- | --- | --- |
-| Stripe (all roles) | Greenhouse | CEO safety restriction — permanent employer block |
-| LaunchDarkly | Greenhouse | Hard 8+ year experience minimum — score < 4; confirmed 2026-05-29, remove from queue |
-| Samsara | Greenhouse | Seniority mismatch — scored <4 (2026-05-29), remove from queue permanently |
-| Toast | Greenhouse | Seniority mismatch — scored <4 (2026-05-29), remove from queue permanently |
-
-## Permission-Gated Companies (high value — worth unlocking)
-
-These are blocked only because browser permissions have not been granted. They should be applied to. User must run `/mcp` → Claude in Chrome → grant the domains below, then they'll flow normally through greenhouse-agent.
-
-| Company | Domain needed | Notes |
-| --- | --- | --- |
-| ~~Samsara~~ | ~~samsara.com~~ | Removed 2026-05-29 — scored <4, seniority mismatch. Moved to permanent skips. |
-| ~~Toast~~ | ~~toasttab.com~~ | Removed 2026-05-29 — scored <4, seniority mismatch. Moved to permanent skips. |
+| CEO preflight | 6 tool calls | Return quotas and dup list only. |
+| Status/Gmail | 6 tool calls | Incremental Gmail only; no portal status checks. |
+| Naukri apply | 45 tool calls | Stop at 15 applied or budget. Flush every 3-4 apps. |
+| Instahyre apply | 35 tool calls | Skip if matching queue empty (< 5 tool calls to confirm). |
+| LinkedIn apply | 12 tool calls | Fallback only; Easy Apply only; cap 3-5. Max 10 tool calls per job. |
+| Networking | 30 tool calls | Scan posts → connect → detect accepted → message. |
+| Final log | 4 tool calls | Compact summary only. |
 
 ## Assessment-Gated Companies (Action Needed — human)
 
 | Company | Gate | Action |
 | --- | --- | --- |
-| HackerRank | Pre-application assessment | Report in Action Needed; human completes assessment, then re-queue |
-| Razorpay | Pre-application assessment | Report in Action Needed; human completes assessment, then re-queue |
-
-## Cross-Platform Patterns
-
-| Pattern | Platform | Action |
-| --- | --- | --- |
-| G-P (GlobalPay) | LinkedIn Easy Apply | Greenhouse modal embedded inside LinkedIn — extract boards.greenhouse.io URL; apply via greenhouse skill |
-
-## Budget Efficiency Retrospective (2026-06-03 — second nightly)
-
-| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
-| --- | ---: | ---: | --- | --- |
-| Naukri | ~60 est. (two batches) | 30 | ~2x (above-target efficiency) | Quota exceeded: 30 applied vs quota 15. Two-phase agent-answer loop completed cleanly. 29 skipped. |
-| Instahyre | 0 | 0 | N/A | Formally suspended — correctly skipped. |
-| LinkedIn | ~20 est. | 0 | N/A | SDUI apply flow migration blocked all Easy Apply. Extension detection fixed; SDUI form traversal still broken. ~9-16 candidates saved to pipeline. |
-| Greenhouse | ~15 est. | 0 | N/A | Board scan succeeded (244 jobs, 15 scored >=4). Apply blocked by iframe/React inputs. 10 queued to pipeline. |
-| Networking | ~10 est. | 0 invited, 0 messaged | N/A | All qualified targets already 1st-degree. Dhanraj G mis-mark corrected to declined. |
-
-## Budget Efficiency Retrospective (2026-06-03 — first nightly)
-
-| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
-| --- | ---: | ---: | --- | --- |
-| Naukri | ~36 est. | 12 | ~3x (on target ratio, below quota) | 12/15 applied — below quota. Keyword exhaustion or dupe density. |
-| Instahyre | 0 | 0 | N/A | Formally suspended — correctly skipped. |
-| LinkedIn | ~12 est. | 1 | ~12x | Extension timeout; fell back to chrome-in-browser. Only 1 qualifying Easy Apply found (UNICSI). |
-| Greenhouse | ~3 est. | 0 | N/A | Scan gate not due (2026-06-08). No queued URLs processable from sandbox. |
-| Networking | ~12 est. | 0 invited, 2 messaged | N/A | Post scan dry (throttling). 2 messages sent to accepted contacts. |
-
-## Budget Efficiency Retrospective (2026-06-02 — nightly)
-
-| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
-| --- | ---: | ---: | --- | --- |
-| Naukri | 0 | 0 | N/A | NopeRi login failure (HTTPCloakError after 5 retries). No browser fallback. |
-| Instahyre | 0 | 0 | N/A | Formally suspended — correctly skipped. |
-| LinkedIn | budget exhausted during scan | 0 (5 from pre-run email records) | N/A | Tool call budget exhausted; 5 confirmed applies from earlier today, 0 new in this run. |
-| Greenhouse | ~5 est. | 0 | N/A | Sandbox network restriction: boards-api.greenhouse.io blocked by allowlist. 10 Airbnb jobs still queued. |
-| Networking | 0 | 0 | N/A | Not attempted — budget/blocker priority. |
-
-## Budget Efficiency Retrospective (2026-06-01 — nightly)
-
-| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
-| --- | ---: | ---: | --- | --- |
-| Naukri | ~27 est. | 9 | ~3x (on target ratio, but below quota) | Below quota of 15. Keyword/dupe exhaustion likely. Needs expanded keywords. |
-| Instahyre | 0 | 0 | N/A | Formally suspended — correctly skipped. |
-| LinkedIn | ~N/A | 0 | N/A | Browser timeout on Easy Apply modal — new failure mode. |
-| Greenhouse | ~15 est. | 0 | N/A | 10 Airbnb jobs scored/queued; browser constraints on form fill. |
-| Networking | ~8 est. | 1 invited, 1 accepted found, 1 message sent | N/A | 1 message attempted to Dhanraj G. Prince Dubey status unclear. |
-
-## Budget Efficiency Retrospective (2026-05-30 — third run, nightly)
-
-| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
-| --- | ---: | ---: | --- | --- |
-| Naukri | ~42 | 14 | 3x (on target) | API error on 15th slot. 13 skipped (dupes + mobile/DevOps). |
-| Instahyre | < 3 | 0 | N/A | Queue empty x6 — FORMALLY SUSPENDED. |
-| LinkedIn | 0 | 0 | N/A | No pipeline leads submitted. 5 leads saved. |
-| Greenhouse | ~15 | 0 | N/A | CEO override triggered, 19 boards scanned, browser blocked on Stripe and others. |
-| Networking | ~8 | 6 invites, 2 accepted | N/A | Gate disabled. Premium paywall blocked messaging. |
-
-## Budget Efficiency Retrospective (2026-05-30 — second run, user overrides)
-
-| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
-| --- | ---: | ---: | --- | --- |
-| Naukri | 0 | 0 | N/A | User override — skipped |
-| Instahyre | 0 | 0 | N/A | User override — skipped |
-| LinkedIn | budget exhausted | 0 | N/A (0 applies) | 5 candidates pre-scored (scores 4-5) but no tool calls remaining to submit. Saved to pipeline.md. |
-| Greenhouse | < 3 | 0 | N/A | All pipeline URLs were dupes; scan not due until 2026-06-05. |
-| Networking | < 3 | 0 | N/A | Gate triggered (83 pending > 80 threshold). |
-
-## Budget Efficiency Retrospective (2026-05-30)
-
-| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
-| --- | ---: | ---: | --- | --- |
-| Naukri | ~45 | 15 | 3x (on target) | Target met. 138 external redirect pipeline saves. Adapter --limit 15 respected. |
-| Instahyre | < 3 | 0 | N/A | Queue empty x5 — correctly detected fast. |
-| LinkedIn | ~40 | 0 | N/A (0 applies) | Kake custom dropdown not interactable. Entire budget consumed on 1 job. |
-| Greenhouse | < 3 | 0 | N/A | Scan not due. Known-blocker check only. |
-| Networking | < 3 | 0 | N/A | Gate triggered (83 pending > 80 threshold). |
-
-## Budget Efficiency Retrospective (2026-05-29 pipeline-clear run)
-
-| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
-| --- | ---: | ---: | --- | --- |
-| Naukri | ~N/A | 3 | ~N/A | NopeRi --limit not enforced; adapter reported 48 but only 3 net new. Overshoot on API calls. |
-| Instahyre | < 3 | 0 | N/A | Queue empty x4 consecutive — correctly detected fast. |
-| LinkedIn | ~12 | 1 | 12 | JoVE Easy Apply success. 11 externals saved. 3 closed jobs (TransUnion, CrowdStrike, Dassault). |
-| Greenhouse pipeline | ~15 | 0 | N/A | Entire 2026-04-12 batch dead (87 entries cleared). 2026-05-28 section: assess-gated or low-score. |
-
-## Budget Efficiency Retrospective (2026-05-29 run 3)
-
-| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
-| --- | ---: | ---: | --- | --- |
-| Naukri | ~75 | 1 | 75x (target < 6x) | 65%+ external redirects; 5 dupes caught; questionnaire blocks. 120 jobs saved to pipeline but not applied. |
-| Instahyre | < 5 | 0 | N/A | Queue empty — correctly detected and stopped in < 5 tool calls. Efficient. |
-| LinkedIn | 12 | 0 | N/A | Budget (12 calls) insufficient for even 1 Easy Apply. Broad keyword; fallback correctly skipped. |
-| Greenhouse | < 5 | 0 | N/A | All 15 queued jobs cleared as blocked/stale/low-score using known-blocker table. Efficient. |
-
-Previous retrospective (2026-05-29 earlier runs):
-
-| Agent | Tool calls used | Applies delivered | Calls/apply | Root cause of waste |
-| --- | ---: | ---: | --- | --- |
-| Naukri | ~40 | 3 | 13.3x (should be ~3x) | Keyword "Java developer" — low yield; ~65% external redirects wasted scan budget |
-| Instahyre | 12 | 0 | N/A | Queue empty — correctly detected and stopped. Efficient. |
-| LinkedIn | 47 | 0 | N/A (0 applies) | Single stuck job (Greenhouse modal trap) consumed entire budget |
-| Greenhouse | 30 | 0 | N/A (0 applies) | Re-discovered same blockers as prior run; 3 tool calls per already-known blocker |
-
-Target efficiency:
-- Naukri: < 6 tool calls per successful apply (NopeRi is API-driven; most cost is scan, not submit)
-- Instahyre: ~2 tool calls per apply when queue is active
-- LinkedIn: 8-10 tool calls per Easy Apply (it is genuinely expensive; keep cap at 3 applies max)
-- Greenhouse: < 5 total calls if all queued jobs are known-blocked
+| BiztechAnalytics | "Project Terminus" assessment | Complete manually — URGENT |
+| Turing | Python/FastAPI assessment | Complete on desktop |
+| Razorpay | Pre-application assessment | Complete, then re-queue |
 
 ## Run Learnings
 
-- 2026-06-03 (second nightly): Naukri 30 applied via NopeRi two-batch run (exceeded quota 15; two-phase agent-answer loop completed, 0 jobs left in "Needs agent answers"). LinkedIn 0 applied — SDUI apply flow migration diagnosed: LinkedIn replaced Easy Apply button with <a href> SDUI anchor; synthetic .click() does not open modal; extension detection FIXED (button now found) but SDUI form traversal in continueEasyApply must be rebuilt before next autonomous submit; ~9-16 scored candidates saved to pipeline. Greenhouse board scan succeeded: 244 jobs discovered, 15 scored >=4, apply blocked by iframe/React form; 10 queued to pipeline (Airbnb BE London, 9 Databricks); last_greenhouse_board_scan_at marked 2026-06-03. Instahyre suspended correctly (0 tool calls). Networking: 0 invited (all 3 qualified targets already 1st-degree), 0 messages sent, Dhanraj G corrected to declined. Status: 0 updates. Total DB: 196 applications. WARN: LinkedIn completely blocked by SDUI migration — critical fix required before next run.
-- 2026-06-03 (nightly): Naukri 12 applied via NopeRi (adapter healthy; below quota of 15 — keyword exhaustion likely). Instahyre suspended correctly (0 tool calls). LinkedIn 1 Easy Apply (UNICSI); extension timeout hit — fell back to chrome-in-browser. Greenhouse 0 — scan gate not due until 2026-06-08, sandbox still blocks API. Networking: 2 accepted found (Muskan Singh + Mamleshwaram Chandra), 2 messages sent, post scan dry (throttling). Status: Amazon Alexa Connect Kit added (applied status), no new rejections/interviews found. Total DB: 196 applications (by status count). WARN: LinkedIn underperformed (1 apply vs 3-5 target); Naukri below quota (12 vs 15). Dhanraj G slug still unresolved.
-- 2026-06-03: Muskan Singh (Think People Solutions) is a warm lead — she replied "Hi, Parikshit" to prior message. Mamleshwaram Chandra (PYXIDIA) messaged 2026-06-03 with base.pdf; he posts Senior Product Engineer roles matching profile (Java/Spring Boot/AWS, Bangalore, 4-8 YOE).
-- 2026-06-03: linkedin_send_message MCP compose box consistently fails — always use claude-in-chrome fallback for networking message sends.
-- 2026-06-03: BiztechAnalytics Project Terminus assessment still outstanding — human action required immediately.
-- 2026-06-03: Amazon Alexa Connect Kit (ID 3201122) has an "incomplete" warning — human must check Amazon Jobs dashboard and complete application if needed.
-- 2026-06-02 (nightly): Naukri 0 applied — NopeRi API adapter login failure (HTTPCloakError after 5 retries). Greenhouse 0 applied — sandbox network restriction (boards-api.greenhouse.io blocked by allowlist); 10 Airbnb jobs still queued. LinkedIn 5 confirmed from email records (Salt, Egnyte, Deltek, Joblet-AI, Honeywell Aerospace) but 0 new in this run (tool budget exhausted during scan). Status: Revolut->Rejected, Amazon SDE-II->Rejected. ACTION NEEDED: BiztechAnalytics assessment (re-confirmed), Turing assessment (re-confirmed), Amazon recruiters follow-up. Total DB: 138. Critical blockers: NopeRi adapter broken, Greenhouse API unreachable from sandbox.
-- 2026-06-02: NopeRi adapter is experiencing HTTP connectivity failure (HTTPCloakError: Request failed after 5 retries). This is a new infrastructure blocker. Possible causes: auth token expired, IP-level block, or adapter service outage. Must investigate/fix before Naukri can resume. With Instahyre also suspended and Greenhouse sandbox-blocked, LinkedIn is the only functioning active-apply channel.
-- 2026-06-02: Greenhouse boards-api.greenhouse.io is blocked by the sandbox network allowlist. The Greenhouse agent cannot score or apply to any queued jobs from the scheduled task sandbox. Requires desktop-native browser with unrestricted network access. This is a structural constraint — do not retry from sandbox.
-- 2026-06-01 (nightly): Naukri 9 applied via NopeRi (below target of 15 — needs investigation). Instahyre empty x7 — remains formally suspended. LinkedIn 0 applied; browser timeout on Easy Apply modal. Greenhouse 0 applied — 10 Airbnb jobs scored/queued but browser constraints blocked form fill; gate skip until 2026-06-08. Networking: 1 invited (Muskan Singh), 1 accepted found (Dhanraj G/Quickhyre CTO), 1 message sent. Status: Amazon->Rejected, BiztechAnalytics->Assessment (ACTION NEEDED), Turing->Assessment (ACTION NEEDED). Total: 9 applies. WARN: LinkedIn browser timeout is a new blocker; Naukri below quota; Greenhouse queue needs browser fix.
-- 2026-06-01: Airbnb Greenhouse queue (10 jobs) ready to apply — blocked only by browser constraints. These are high-value (Airbnb engineering) and must be prioritized in next run. Greenhouse board scan gate is 2026-06-08 — not due yet, but queue processing is independent of scan gate.
-- 2026-06-01: BiztechAnalytics "Project Terminus" assessment and Turing Python/FastAPI assessment both received same run — two concurrent assessments require human attention. Add to action needed list.
-- 2026-05-30 (third run, nightly): Naukri 14 applied via NopeRi (API error on 15th). Instahyre empty x6 — formally suspended. LinkedIn 0 applied; 5 leads saved to pipeline. Greenhouse 0 applied — CEO override triggered 19-board scan (gate overridden at 14 total < 30), browser blocked. Networking: gate disabled by user, 6 invites sent, 2 accepted (Dhanraj G/Quickhyre CTO, Prince Dubey/PYXIDIA), 0 messages — LinkedIn Premium paywall blocks non-first-degree messaging. Total: 14 applies. WARN: Instahyre officially suspended, Greenhouse browser permissions required.
-- 2026-05-30 (third run, nightly): LinkedIn Premium paywall confirmed as blocker for networking messages to non-first-degree connections. Accepted contacts Dhanraj G (Quickhyre CTO) and Prince Dubey (PYXIDIA) cannot be messaged autonomously. Human must send manual outreach or upgrade to Premium.
-- 2026-05-30 (second run, user overrides): Naukri and Instahyre skipped by user override. LinkedIn pre-scored 5 candidates (Acumatica SDE 4, Kake Senior SWE LLM 5, Bright Matrix .Net 4, Jobgether Python 4, TAVIG Digital SWE 4) but exhausted tool budget before submitting any. All 5 saved to pipeline.md. Greenhouse: Lenskart was a dupe (applied 2026-05-29); Razorpay assessment-gated. Networking blocked at 83 pending invites. Total: 0 applies this run. CRISIS threshold not triggered (user intentionally overrode all primary platforms).
-- 2026-05-30: Naukri hit target of 15 applies via NopeRi (Quantum Phinance, Intellemo, Verdantis, Amazon, Nxtwave, Tekskills x3, Bluescope, Tracxn, ti Steps, Arshil LLC, Oriserve, EY, Nexgensis). 4 skipped. 138 external redirects saved to pipeline — pipeline backlog continues to grow.
-- 2026-05-30: Instahyre empty for FIFTH consecutive run. Evaluate whether to suspend Instahyre stage entirely. Feed is likely not refreshing for this account. Set a human alert.
-- 2026-05-30: LinkedIn Kake application blocked ~40 tool calls on a custom dropdown not interactable by MCP tools. Hard rule: if a form element is not interactable after 2 attempts, skip that job immediately. Per-job cap of 10 tool calls must be enforced without exception.
-- 2026-05-30: Networking gate triggered at 83 pending invites (threshold 80). No outreach possible. Must wait for withdrawals or accepts before next run.
-- 2026-05-30: Gmail scan found Lenskart and Razorpay Greenhouse confirmations — these were added as new DB entries. Razorpay is assessment-gated (Full Stack Builder). Monitor for HackerRank invite.
-- 2026-05-30: Qurex Health Backend Developer status updated to Responded (recruiter activity via Naukri). No human action needed — recruiter activity, not a reply requiring response.
-- 2026-05-30: Airamatrix and Paypay India showed recruiter activity in Naukri emails but are not in DB (untracked older applications). Ignore — not from our system.
-- 2026-05-29 (pipeline-clear run): Entire 2026-04-12 pipeline batch (87 entries) confirmed dead — Lever 404, Greenhouse US-only/sponsorship, Ashby/Workable specialized/niche, generic batch US-only or seniority mismatch. Do NOT reprocess. Mark all 2026-04-12 entries as Cleared.
-- 2026-05-29 (pipeline-clear run): NopeRi --limit flag not enforced. Adapter reported 48 but only 3 net new entries in DB. Must audit adapter behavior — add explicit cap check before batch or after batch using DB delta.
-- 2026-05-29 (pipeline-clear run): Instahyre empty for FOURTH consecutive run. Skip stage in < 3 tool calls from now on. Feed may not be refreshing for this account.
-- 2026-05-29 (pipeline-clear run): LinkedIn JoVE/Software Engineer/Delhi Remote successfully applied via Easy Apply (1 apply). Turing and Precisely still in LinkedIn queue — add to next run.
-- 2026-05-29 (pipeline-clear run): Greenhouse 2026-05-28 section: HackerRank and Razorpay are assessment-gated (human must complete assessment before re-queue). Samsara and Toast scored <4 (seniority mismatch) — moved to permanent skips. LaunchDarkly confirmed permanent skip.
-- 2026-05-29 (run 3): Naukri yielded only 1 apply from 75+ scanned jobs (Uprise Labs). 120 new external redirect URLs saved to pipeline. Pipeline.md backlog is now the primary untapped apply source — must route to greenhouse-agent and generic-apply-agent in next run's STAGE 4.
-- 2026-05-29 (run 3): Instahyre queue empty for third consecutive run. No bug — feed refreshes daily. Confirmed correctly in < 5 tool calls.
-- 2026-05-29 (run 3): LinkedIn 12-call budget is too thin for even one Easy Apply. Either allocate at least 15 calls or skip LinkedIn entirely. Broad "Backend Engineer" keyword generates volume but low Easy Apply rate.
-- 2026-05-29 (run 3): Greenhouse queue fully cleared — all 15 entries were blocked, low-score, or stale. Board scan due 2026-06-05 will replenish. The Greenhouse stage currently delivers 0 value without browser permissions; unlocking samsara.com and toasttab.com is the single highest-ROI human action available.
-- 2026-05-29 (run 3): Gmail scan found 9 emails (8 new), all LinkedIn notifications or job alerts — no status signals (no interview/rejection/offer). Status stage was correct and fast.
-- 2026-05-29 (run 3): EPAM India and foodpanda rejection statuses from prior run still not updated in DB (companies not matched). Needs manual DB update or CEO fix.
-- 2026-05-29 (retrospective): LinkedIn 47-call budget trap. G-P Staff AI Fullstack embedded a Greenhouse modal inside LinkedIn Easy Apply. Agent failed to detect the pattern and spent entire LinkedIn budget on 1 job. Fix: score all cards first, detect Greenhouse-inside-LinkedIn immediately, skip and save. See linkedin.md for detection signals.
-- 2026-05-29 (retrospective): Greenhouse 30-call re-discovery waste. All 10 queued jobs were blocked for reasons already known from 2026-05-28. Known-blocker table now in greenhouse.md. Next run should handle all 10 in < 5 tool calls total.
-- 2026-05-29 (retrospective): LaunchDarkly 8+ yr minimum escaped scoring. Scoring rule patched in greenhouse.md: extract hard experience minimum from JD; if > 5 years, score < 4, do not queue.
-- 2026-05-29 (retrospective): Naukri keyword "Java developer" is low-quality — walk-in events, LAMP stacks, mass-hiring portals. Only 3 applies from 43 scans. Switch to "Java backend", "Spring Boot", "backend engineer" for next run.
-- 2026-05-29 (retrospective): Sandhata dupe was caught by db_batch_insert but agent still attempted it (wasted 1 slot and some tool calls). Fix: re-read db.py list right before building NopeRi submission batch, not just at plan time.
-- 2026-05-29 (run 2): Naukri produced 3 new apps (TCS walk-in, Persistent Appworks, Nustar walk-in) via keyword "Java developer". Sandhata was a dupe (already applied same company+role+platform). DB now has 50 Naukri apps total, 75 overall. Walk-in roles score 4 but are lower-value targets.
-- 2026-05-29 (run 2): db_batch_insert.py dupe-check works correctly — Sandhata silently skipped. Always compare inserted vs attempted counts.
-- 2026-05-29 (run 2): LinkedIn G-P Staff AI Fullstack (score 5) had a Greenhouse form embedded inside the LinkedIn Easy Apply modal. This is a recurring pattern — extract the Greenhouse board token and apply directly via the greenhouse skill instead.
-- 2026-05-29 (run 2): Greenhouse 10 queued jobs all blocked for a third consecutive run (permissions + hard minimums).
-- 2026-05-29 (run 2): Gmail scan found 3 emails but all pre-dated the last scan window. No new status signals.
-- 2026-05-29: Naukri direct-apply has partially dried up — ~65% redirecting to external ATS. Pipeline has 122 saved Naukri redirect URLs.
-- 2026-05-29: LinkedIn Easy Apply volume is extremely low with broad keywords. Must use narrower, startup-skewed keyword phrases.
-- 2026-05-29: Greenhouse board scan not due (next eligible 2026-06-04). 10 high-score jobs queued but all blocked.
-- 2026-05-28: Plugin memory initialized. Next run should replace placeholder platform health with measured outcomes.
-- 2026-05-28 (run 2): ALL THREE platforms blocked by session limit before apply stage. Run was scheduled too early. Must run after 7pm IST.
-- 2026-05-28: `db_batch_insert.py --log-run` does NOT support `--naukri` flag. Log Naukri applied count in `--summary` text only.
-- 2026-05-28: LinkedIn first-attempt failure pattern: Cloudflare 522 timeout before session-limit hit. Retry works but session was already expired. Run timing is the root fix.
-- 2026-05-28: Goldman Sachs has an incomplete application in-flight. Human must decide whether to complete it.
-- 2026-05-28: EPAM sent a "Confirm your application" email — this requires a human email click; agent cannot action it.
-- 2026-05-28: Resume strategy: all three archetypes (general-backend/base.pdf, distributed-data/backend-systems.pdf, ai-backend/ai-backend.pdf) were REUSE. 0 tuning needed.
-- 2026-05-28 (run 3 — session reset): Session limit confirmed cleared. Previous run applied 24 Instahyre jobs successfully before the limit hit (all logged in DB).
-- 2026-05-28: Quota burn root cause was parallel APPLY agent fan-out plus long CEO/profile/log calls. Future runs must use a sequential controller with per-agent budgets.
-- 2026-05-28 (run 4 — final log): Naukri 1 applied (IDESLABS). Instahyre 25 apps total. LinkedIn 0 applied. Greenhouse 0 applied.
-- 2026-05-28: Naukri questionnaire 406 block pattern: Synaptein, Hour Consulting, NeoSOFT triggered questionnaire blocks. Skip and do not retry.
-- 2026-05-28: Greenhouse board token 404s: grammarly, notion, plaid, ramp, rippling, segment. Mark inactive.
-- 2026-05-28: LinkedIn "Top Applicant" signal on Peak XV Senior Full-Stack Engineer (job ID 4419048709).
-- 2026-05-28: Narendra K. (Honeywell, LinkedIn) sent outreach — human should decide whether to reply.
+- 2026-06-05: 17 applies (15 Naukri + 2 LinkedIn). Naukri NopeRi healthy from user's machine (sandbox HTTP 000 is the only blocker). LinkedIn: Curefit SDE3 + JioHotstar SDE2 applied; Crossing Hurdles form issues after 2 attempts, Pro5.ai closed. Networking: linkedin-extension MCP timeout — fallback not executed; fix: fire claude-in-chrome fallback on first MCP timeout. Status: Amazon SDE II Alexa → Rejected. myKaarma hiring paused (not in DB). Total DB: 241.
+- 2026-06-03: Naukri 30 applied (exceeded quota via two-phase run). LinkedIn SDUI gate lifted as of 2026-06-03; Easy Apply operational. Networking: 11 invites sent (claude-in-chrome reliable; linkedin-extension times out on searchPosts/connect).
+- 2026-06-02: Naukri 0 (NopeRi HTTPCloakError). LinkedIn 5 from earlier session. Networking blocked (browser unavailable in scheduled run — pre-open Chrome tab before run starts).
+- 2026-05-30: Instahyre empty 6+ consecutive runs — formally suspended. LinkedIn Kake custom dropdown consumed entire budget (40 calls, 0 applies). Hard 10-call cap per job enforced from next run.
+- 2026-05-29: Naukri "Java developer" keyword low-yield (65% external redirects). Switch to "Java backend", "Spring Boot", "backend engineer" — confirmed higher yield.
+- 2026-05-28: `db_batch_insert.py --log-run` does NOT support `--naukri` flag. Log Naukri count in `--summary` text only.
+- 2026-05-28: Run timing: ALL platforms blocked by session limit when run before 7pm IST. Always run after 7pm IST.
 
 ## Action Items Backlog (requires human)
 
-- BiztechAnalytics "Project Terminus": assessment invitation received 2026-06-01. Complete assessment manually — URGENT. (naukri, gmail: "Project Terminus - Assessment@BiztechAnalytics")
-- Turing Python/FastAPI BE Developer: assessment login link received 2026-06-01. Complete assessment on desktop. (linkedin, gmail: "Your login link is ready: Complete your Turing assessment on desktop")
-- Amazon Alexa Connect Kit (ID 3201122): "incomplete" warning received after application added to DB 2026-06-03. Check Amazon Jobs dashboard and complete if needed.
-- Goldman Sachs: incomplete application "Software Engineering - Data, Lakehouse and AI Data Platform Engineer" — decide to complete or abandon.
-- EPAM India: "Confirm your application" email — click required, agent cannot action.
-- Dhanraj G (Quickhyre CTO): LinkedIn slug `dhanraj-g` resolves to IBM Senior Consultant (wrong person). Find correct LinkedIn profile URL before any message attempt.
-- Amazon recruiter Jiani Ji: reply pending after resume sent May 13 — consider follow-up.
-- Amazon recruiter Manikanta Bellapu: reply pending after resume sent May 13 — consider follow-up.
-- Singapore recruiter Adam Modelski (Legacy Resourcing): reply pending after resume sent May 20 — consider follow-up.
-- LinkedIn Narendra K. (Honeywell) outreach: sent Wed 7:25 AM — decide whether to reply.
-- Greenhouse browser permissions: grant permissions for boards.greenhouse.io before 2026-06-08 board scan. (Stripe: do NOT grant — permanent skip.)
-- Peak XV Senior Full-Stack Engineer (LinkedIn job 4419048709): Top Applicant signal — check if Easy Apply is still open and prioritize.
-- Oracle "Continue to apply" email (GSRecruiting@oracle.com): decide to complete or ignore.
-- G-P Staff AI Fullstack: extract Greenhouse board URL from LinkedIn job and apply directly via greenhouse skill (score 5 — high priority).
-- Razorpay Full Stack Builder (Greenhouse, added 2026-05-30): assessment-gated — monitor for HackerRank invite. Complete assessment, then re-queue.
-- LinkedIn networking: check pending invite count. If >= 80, withdraw stale invites (sent > 3 weeks ago) before next networking run.
-
-## Status Updates Needed in DB
-
-- EPAM India — Sr Java Software Developer — Rejected (gmail: "Unfortunately...") — not found in DB, may use different name spelling; check manually
-- foodpanda — Backend Software Engineer II — Rejected (gmail: "after careful consideration...") — not found in DB; check manually
-- Turing — Python/FastAPI BE Developer — Assessment received (linkedin, gmail: "Your login link is ready: Complete your Turing assessment on desktop") — ACTION NEEDED, not yet in DB if not applied via tracked platform
+- BiztechAnalytics "Project Terminus": assessment — URGENT
+- Turing Python/FastAPI BE Developer: complete assessment on desktop
+- Amazon Alexa Connect Kit (ID 3201122): "incomplete" warning — check Amazon Jobs dashboard
+- Goldman Sachs: incomplete application — decide to complete or abandon
+- EPAM India: "Confirm your application" email — click required
+- Naukri 4 status notifications (2026-06-05): check Naukri portal for company details
+- Dhanraj G (Quickhyre CTO): LinkedIn slug `dhanraj-g` resolves to IBM consultant — find correct URL
 
 ## Next Run Checklist
 
-- [ ] CRITICAL: LinkedIn SDUI apply flow migration — continueEasyApply must be rebuilt to navigate to apply href and traverse SDUI form before any autonomous Easy Apply submission. Do NOT attempt LinkedIn Easy Apply until verified. See data/memory/linkedin-sdui-apply-flow.md. ~9-16 scored candidates already in pipeline.md awaiting this fix.
-- [ ] CRITICAL: Instahyre FORMALLY SUSPENDED (7+ consecutive empty runs). Do NOT allocate any budget. Do not check Instahyre queue.
-- [ ] HIGH: Greenhouse pipeline queue — 10 jobs (Airbnb BE London, 9 Databricks borderline) queued in pipeline.md. Route to generic-apply-agent via direct URL navigation + ats-extension. Board scan gate: 2026-06-10 (next eligible after 2026-06-03 scan).
-- [ ] HIGH: Naukri dupe density rising (DB: 148 apps). Continue broad keywords but monitor skip rate. Pipeline.md has ~248 new Naukri external redirects — route Greenhouse-pattern URLs to greenhouse-agent (API score first), other ATS to generic-apply-agent in batches of 3-5.
-- [ ] ACTION NEEDED: BiztechAnalytics — "Project Terminus" assessment invitation. Complete assessment manually (URGENT — may have deadline).
-- [ ] ACTION NEEDED: Turing — Python/FastAPI BE Developer — assessment login link received. Complete assessment on desktop.
-- [ ] ACTION NEEDED: Amazon Alexa Connect Kit (ID 3201122) — "incomplete" warning on Amazon Jobs dashboard. Check and complete if needed.
-- [ ] ACTION NEEDED: Goldman Sachs application — decide to complete or abandon.
-- [ ] ACTION NEEDED: EPAM "Confirm your application" — click required in email.
-- [ ] NETWORKING: Fix Dhanraj G (Quickhyre CTO) slug — `dhanraj-g` resolves to IBM consultant. Find correct LinkedIn URL before attempting any message. Muskan Singh is a warm lead — respond promptly if she follows up. Pending invites ~10 (well under 80 gate).
-- [ ] NETWORKING: linkedin_send_message compose box consistently fails — use claude-in-chrome for all message sends.
-- [ ] Greenhouse board scan 2026-06-10: prepare 5+ new board tokens via WebSearch before scan day. Remove inactive boards: grammarly, notion, plaid, ramp, rippling, segment (all returned 404).
-- [ ] Fix DB status for EPAM India and foodpanda: both need Rejected status. Use `python3 scripts/db.py list` to confirm exact name strings, then `db.py update-status`.
-- [ ] Run AFTER 7pm IST — session limits reset at 7pm IST on all platforms.
-- [ ] Run order: STATUS (Gmail incremental), Naukri (quota 15, broad keywords), PIPELINE stage (score/route pending entries — Greenhouse URLs first, then other ATS), Greenhouse (queued pipeline apply from desktop; board scan only if 2026-06-10 gate passes), LinkedIn (ONLY if SDUI traversal rebuilt + verified; otherwise skip and reallocate budget to Naukri/pipeline), Networking last (only if pending invites < 80).
+- [ ] Naukri: run from user's machine. Quota 15. Keywords: "Java backend", "Spring Boot", "backend engineer", "full stack developer", "SDE", "platform engineering". Flush every 3-4 apps.
+- [ ] Instahyre: SUSPENDED — skip entirely. No budget allocation.
+- [ ] LinkedIn: 3-5 Easy Apply fallback. Skip job after 2 failed fills. Skip closed roles before attempting. 10-call hard cap per job.
+- [ ] Networking: on linkedin-extension timeout, immediately fall back to claude-in-chrome. Monitor ~21 pending invites. Message accepted with output/base.pdf. Muskan Singh cooldown until 2026-07-02.
+- [ ] Run AFTER 7pm IST.
 - [ ] Refresh dup list from DB before each platform: `python3 scripts/db.py list`.
-- [ ] Do NOT use `--naukri` flag in db_batch_insert.py — it does not exist. Log Naukri count in --summary text only.
-- [ ] Flush Naukri apps with `scripts/db_batch_insert.py --apps` after every 3-4 successful applications.
-- [ ] NopeRi --limit enforcement: verify adapter respects --limit 15. Check DB delta after batch.
+- [ ] Do NOT use `--naukri` flag in db_batch_insert.py.
+- [ ] Flush Naukri apps every 3-4 successful applications.

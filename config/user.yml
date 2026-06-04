@@ -6,8 +6,8 @@ identity:
   email: ""
   phone: ""
   location: ""
-  linkedin: ""
-  github: ""
+  linkedin: "https://www.linkedin.com/in/parikshit-dabas-0899b0203/"
+  github: "https://github.com/i-am-pluto"
 
 current_role:
   current_company: ""
